@@ -78,19 +78,22 @@ class Graph:
     def edges(self):
         return self._edges
 
+    def get_vertex(self, n):
+        return self._vertices[n]
+
     def get_edge(self, v_1, v_2):
         i_1 = v_1.id()
         return self._I_plus_list[i_1][v_2]
 
     def degree(self, v, direction='+'):
         incident_map_list = self._I_plus_list if (direction == '+') else self._I_minus_list
-        return len(incident_map_list[v])
+        return len(incident_map_list[v.id()])
 
     def incident_edges(self, v, direction='+'):
         incident_map_list = self._I_plus_list if (direction == '+') else self._I_minus_list
         edge_list = []
 
-        for e_i in incident_map_list[v].values():
+        for e_i in incident_map_list[v.id()].values():
             edge_list.append(e_i)
 
         return edge_list
@@ -98,7 +101,7 @@ class Graph:
     def insert_vertex(self, x=None):
         next_id = len(self._vertices)
 
-        v = self.Vertex(x, next_id)
+        v = Vertex(x, next_id)
         self._vertices.append(v)
 
         self._I_minus_list.append({})
@@ -107,13 +110,18 @@ class Graph:
         else:
             self._I_plus_list = self._I_minus_list
 
+        return v
+
     def insert_edge(self, v_1, v_2, x=None):
-        e = self.Edge(v_1, v_2, x)
+        e = Edge(v_1, v_2, x)
         self._incidenceFunction[(v_1, v_2)] = e
+        self._edges.append(e)
 
         i_1 = v_1.id()
         i_2 = v_2.id()
 
         self._I_plus_list[i_1][v_2] = e
         self._I_minus_list[i_2][v_1] = e
+
+        return e
 # ------------------------------------------------Graph-----------------------------------------------------------------
