@@ -3,14 +3,17 @@ Alonso Vega
 October 21, 2020
 Graph Class
 """
+import numpy as np
 
 
 # ------------------------------------------------Vertex----------------------------------------------------------------
 class Vertex:
-    __slots__ = '_element', '_id'
+    __slots__ = '_element', '_id', '_x', '_y'
 
-    def __init__(self, x, n):
-        self._element = x
+    def __init__(self, x, y, element, n):
+        self._x = x
+        self._y = y
+        self._element = element
         self._id = n
 
     def element(self):
@@ -19,8 +22,14 @@ class Vertex:
     def id(self):
         return self._id
 
+    def x_value(self):
+        return self._x
+
     def __hash__(self):
         return hash(id(self))
+
+    def y_value(self):
+        return self._y
 # ------------------------------------------------Vertex----------------------------------------------------------------
 
 
@@ -98,10 +107,10 @@ class Graph:
 
         return edge_list
 
-    def insert_vertex(self, x=None):
+    def insert_vertex(self, x, y, element=None):
         next_id = len(self._vertices)
 
-        v = Vertex(x, next_id)
+        v = Vertex(x, y, element, next_id)
         self._vertices.append(v)
 
         self._I_minus_list.append({})
@@ -124,4 +133,11 @@ class Graph:
         self._I_minus_list[i_2][v_1] = e
 
         return e
+
+    def distance(self, v_1, v_2, norm_order=2):
+        p_1 = [v_1.x_value(), v_1.y_value()]
+        p_2 = [v_2.x_value(), v_2.y_value()]
+
+        diff = np.subtract(p_1, p_2)
+        return np.linalg.norm(diff, ord=norm_order)
 # ------------------------------------------------Graph-----------------------------------------------------------------
