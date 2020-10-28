@@ -15,7 +15,7 @@ v_3 = G.insert_vertex(3.5, 12.5, None)
 print(G.distance(v_2, v_2))
 
 
-points = np.array([[0.2, 0.2], [0.2, 0.4], [0.5, 0.6], [0.25, 0.3]])
+points = np.array([[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]])
 hull = ConvexHull(points, incremental=True)
 
 plt.plot(points[:, 0], points[:, 1], 'o')
@@ -27,8 +27,22 @@ plt.plot(points[hull.vertices,0], points[hull.vertices,1], 'r--', lw=2)
 plt.plot(points[hull.vertices[0],0], points[hull.vertices[0],1], 'ro')
 plt.show()
 
-hull.add_points([[0.1, 0.6]])
-hull.close()
+
+
+
+
+import Obstacle
+
+O_0 = Obstacle.Obstacle([(0,0),(0.5,0.0),(0.5,1.0),(0.0,1.0)], convex=True)
+
+
+
+
+
+
+
+
+
 
 
 
