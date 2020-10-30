@@ -1,39 +1,33 @@
-
-import SpatialGraph
-
-from scipy.spatial import ConvexHull, convex_hull_plot_2d
-import numpy as np
+import Obstacle
+import Environment
 import matplotlib.pyplot as plt
 
-G = SpatialGraph.Graph(directed=False)
+O_0 = Obstacle.Obstacle([(0, 0),
+                         (0.5, 0.0),
+                         (0.5, 1.0),
+                         (0.3, 0.3)],
+                        convex=True)
 
-v_0 = G.insert_vertex(1.0, 1.5, None)
-v_1 = G.insert_vertex(2.0, 0.5, None)
-v_2 = G.insert_vertex(0.5, 12.5, None)
-v_3 = G.insert_vertex(3.5, 12.5, None)
+O_1 = Obstacle.Obstacle([(5.0, 6.0),
+                         (0.6, 8.2),
+                         (1.7, 5.5)],
+                        convex=True)
 
-print(G.distance(v_2, v_2))
+O_2 = Obstacle.Obstacle([(2.0, 2.0),
+                         (3.0, 0.5),
+                         (4.0, 2.0),
+                         (3.0, 4.0)],
+                        convex=True)
 
-
-points = np.array([[0.0, 0.0], [0.5, 0.0], [0.5, 1.0], [0.0, 1.0]])
-hull = ConvexHull(points, incremental=True)
-
-plt.plot(points[:, 0], points[:, 1], 'o')
-
-for simplex in hull.simplices:
-    plt.plot(points[simplex, 0], points[simplex, 1], 'k-')
-plt.plot(points[hull.vertices,0], points[hull.vertices,1], 'r--', lw=2)
-
-plt.plot(points[hull.vertices[0],0], points[hull.vertices[0],1], 'ro')
-plt.show()
+env = Environment.Environment([0,10], [0,10], [O_0, O_1, O_2],(0,1),(10,10))
 
 
 
+env.print_environment()
+
+print(env.collision([1, 2]))
 
 
-import Obstacle
-
-O_0 = Obstacle.Obstacle([(0,0),(0.5,0.0),(0.5,1.0),(0.0,1.0)], convex=True)
 
 
 

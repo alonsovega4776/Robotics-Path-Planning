@@ -4,6 +4,8 @@ October 21, 2020
 Graph Class
 """
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import collections as pltC
 
 
 # ------------------------------------------------Vertex----------------------------------------------------------------
@@ -140,4 +142,33 @@ class Graph:
 
         diff = np.subtract(p_1, p_2)
         return np.linalg.norm(diff, ord=norm_order)
+
+    def print_graph(self, show=False):
+        fig, axis = plt.subplots()
+
+        points = []
+        for v in self._vertices:
+            x = v.x_value()
+            y = v.y_value()
+            # d = np.linalg.norm(np.array([x, y]))
+            points.append([x, y])
+            axis.annotate(f'{v.id()}', (x, y))
+                          # (x - 0.05*d, y - 0.05*d),
+                          # arrowprops={'arrowstyle': '-'})
+        points = np.array(points)
+
+        axis.scatter(points[:, 0], points[:, 1], s=50.0, color=(1, 0, 0, 0.5))
+
+        points = []
+        for e in self._edges:
+            (v_1, v_2) = e.end_vertices()
+            points.append([(v_1.x_value(), v_1.y_value()), (v_2.x_value(), v_2.y_value())])
+
+        segments = pltC.LineCollection(points, linewidths=0.75, colors=(1, 0, 0, 1))
+        axis.add_collection(segments)
+
+        if show:
+            plt.show()
+
+        return fig, axis
 # ------------------------------------------------Graph-----------------------------------------------------------------
