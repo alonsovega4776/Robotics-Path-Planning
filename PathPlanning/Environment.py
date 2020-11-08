@@ -12,7 +12,8 @@ class Environment:
     __slots__ = '_xMin', '_xMax', '_yMin', '_yMax',\
                 '_obstacleList',\
                 '_goal', '_start', \
-                '_axes', '_figure'
+                '_axes', '_figure', \
+                '_robot'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -25,6 +26,7 @@ class Environment:
 
         self._goal = goal
         self._start = start
+        self._robot = self._start
 
         self._figure, self._axes = plt.subplots()
 
@@ -114,6 +116,8 @@ class Environment:
         segments = pltC.LineCollection(points, linewidths=0.75, colors=(0, 0, 1, 1))
         self._axes.add_collection(segments)
 
+        self._axes.scatter(self._goal[0], self._goal[1], s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='*')
+
         self._axes.set_xlim(self._xMin - limit, self._xMax + limit)
         self._axes.set_ylim(self._yMin - limit, self._yMax + limit)
         plt.close(self._figure)
@@ -149,7 +153,7 @@ class Environment:
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
         else:
             Σ = np.diag([1.5, 1.5])
-            μ = np.array([3, 3])
+            μ = np.array([self._robot[0], self._robot[1]])
             sample = np.random.multivariate_normal(μ, Σ, n)
             x_rand = sample[:, 0]
             y_rand = sample[:, 1]
