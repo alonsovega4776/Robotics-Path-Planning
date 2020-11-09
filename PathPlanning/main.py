@@ -1,5 +1,6 @@
 import Obstacle
 import Environment
+import Robot
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
@@ -38,9 +39,6 @@ env = Environment.Environment([0, 10], [0, 10], [O_0, O_1, O_2, O_3, O_4], (2, 1
 env.print_environment()
 env.sample(100, 'Ν')
 env.refresh_figure()
-
-
-
 
 
 
