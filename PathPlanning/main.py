@@ -40,6 +40,12 @@ env.print_environment()
 env.sample(100, 'Ν')
 env.refresh_figure()
 
+x_0 = np.array([37.3, 2.38, -0.38, 0, 0])
+q_ref = np.array([20, 0, np.pi/2])
+t_1 = 0
+t_2 = 5
+N = 200
+robo = Robot.Robot(x_0, q_ref, t_1, t_2, N)
 
 
 
