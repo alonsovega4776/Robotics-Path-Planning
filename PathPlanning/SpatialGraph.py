@@ -74,6 +74,18 @@ class Graph:
         self._I_plus_list = []
         self._I_minus_list = [] if directed else self._I_plus_list
 
+    def set_I_minus_list(self, I_list):
+        self._I_minus_list = I_list
+
+    def set_I_plus_list(self, I_list):
+        self._I_plus_list = I_list
+
+    def I_minus_list(self):
+        return self._I_minus_list
+
+    def I_plus_list(self):
+        return self._I_plus_list
+
     def is_directed(self):
         return self._directed
 

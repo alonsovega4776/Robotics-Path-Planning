@@ -1,6 +1,7 @@
 import Obstacle
 import Environment
 import Robot
+import Tree
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
@@ -36,18 +37,21 @@ O_4 = Obstacle.Obstacle([(6.0, 5.0),
 
 env = Environment.Environment([0, 10], [0, 10], [O_0, O_1, O_2, O_3, O_4], (2, 1), (8, 8))
 
-env.print_environment()
-env.sample(100, 'Ν')
-env.refresh_figure()
+#env.print_environment()
+#env.sample(100, 'Ν')
+#env.refresh_figure()
 
-x_0   = np.array([37.3,    np.radians(136.5),    np.radians(-21.8),      0, 0])
-q_ref = np.array([20.0,    np.radians(0),        np.radians(90)])
+x_0   = np.array([0.0,    np.radians(40.5),    np.radians(0),      0, 0])
+q_ref = np.array([4.0,    np.radians(0),        np.radians(0)])
 t_1 = 0
 t_2 = 5.0
-N = 5500
+N = 2000
 robo = Robot.Robot(x_0, q_ref, t_1, t_2, N)
 
-sol = robo.get_trajectory()
+#sol = robo.get_trajectory()
+
+T = Tree.Tree([0, 0])
+
 
 
 

@@ -117,7 +117,7 @@ class Robot:
         axes_xy.scatter(x_c[0], y_c[0],
                         s=900.0, color=(0.1, 0.1, 0.1, 0.8), marker='o')
 
-        # fig_xy.show()
+        fig_xy.show()
 
         sol[:, 1:3] = np.degrees(sol[:, 1:3])
         sol[:, 4]   = np.degrees(sol[:, 4])
@@ -145,10 +145,10 @@ class Robot:
 
         q_eDot = q_cDot - q_refDot      # error in q_cDot
 
-        if ((np.abs(ρ_e) < 0.1) & (np.abs(np.degrees(φ_e)) < 5)) | self._heading_control_EN:
+        self._heading_control_EN = (np.abs(ρ_e) < 0.75) & (np.abs(np.degrees(φ_e)) < 5.0)
+        if self._heading_control_EN:
             u_head = self.heading_controller_chwa(q_c, q_cDot, q_e, q_eDot)
             z_cDot = u_head - f         # x[0:3]Dot = f(x)
-            self._heading_control_EN = True
         else:
             (u_pseudo, M_c_2x2, s_θ) = self.pseudo_position_controller_chwa(q_c, q_cDot, q_e, q_eDot)
 
@@ -252,6 +252,8 @@ class Robot:
         return u
 
     def pseudo_position_controller_chwa(self, q_c, q_cDot, q_e, q_eDot):
+        self._K_matrix[2, 2] = 0.002
+
         ρ_c = q_c[0]
         φ_c = q_c[1]
         θ_c = q_c[2]
@@ -343,12 +345,12 @@ class Robot:
     def saturation(self, error, φ=1):
         return np.clip(error, -φ, φ)/φ
 
-    def saturation_tanh(self, error, φ=1/2):
+    def saturation_tanh(self, error, φ=1/1):
         error = np.array(error)
         sat = np.tanh(error*(1/φ))
         return sat
 
-    def saturation_tanhDot(self, error, errorDot, φ=1/2):
+    def saturation_tanhDot(self, error, errorDot, φ=1/1):
         errorDot = np.array(errorDot)
 
         sat        = self.saturation_tanh(error, φ=φ)
