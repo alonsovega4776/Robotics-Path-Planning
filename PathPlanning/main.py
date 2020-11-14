@@ -40,11 +40,11 @@ env.print_environment()
 env.sample(100, 'Ν')
 env.refresh_figure()
 
-x_0   = np.array([5, np.pi/2, 0,     0, 0])
-q_ref = np.array([35, 0,     np.pi/2])
+x_0   = np.array([37.3,    np.radians(136.5),    np.radians(-21.8),      0, 0])
+q_ref = np.array([20.0,    np.radians(0),        np.radians(90)])
 t_1 = 0
-t_2 = 10
-N = 2000
+t_2 = 5.0
+N = 5500
 robo = Robot.Robot(x_0, q_ref, t_1, t_2, N)
 
 sol = robo.get_trajectory()
