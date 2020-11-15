@@ -3,6 +3,9 @@ Alonso Vega
 October 29, 2020
 Environment Class
 """
+import Robot
+import Tree
+
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import collections as pltC
@@ -13,7 +16,7 @@ class Environment:
                 '_obstacleList',\
                 '_goal', '_start', \
                 '_axes', '_figure', \
-                '_robot'
+                '_robot', '_RRTtree'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -24,11 +27,19 @@ class Environment:
 
         self._obstacleList = obstacle_list
 
-        self._goal = goal
+        start = np.array(start)         # initial state
+        goal  = np.array(goal)          # reference state
+        self._robot = Robot.Robot(start, q_ref=start, t_1=0.0, t_2=5.0, step_number=500)
+
+        self._RRTtree = Tree.Tree(start)
+
+        self._goal  = goal
         self._start = start
-        self._robot = self._start
 
         self._figure, self._axes = plt.subplots()
+
+    def get_robot(self):
+        return self._robot
 
     def x_max(self):
         return self._xMax
@@ -47,6 +58,12 @@ class Environment:
 
     def start(self):
         return self._start
+
+    def set_goal(self, new_goal):
+        self._goal = new_goal
+
+    def set_start(self, new_initial_state):
+        self._start = new_initial_state
 
     def obstacles(self):
         return self._obstacleList
@@ -173,7 +190,32 @@ class Environment:
         plt.close(self._figure)
         self._figure.show()
 
+    def build_RRT(self, K):
+        for k in range(0, K+1):
+            x_rand = self.random_state()
+            self.extend_tree(x_rand)
 
+    def random_state(self):
+        return 0
+
+    def extend_tree(self, x_rand):
+        x_near = self.nearest_neighbor(x_rand)
+        if new_state(x_rand, x_near):
+            self._RRTtree.insert_vertex(xCoord_new, yCoord_new, v_near, element=x_new)
+            self._RRTtree.insert_edge(v_near, v_new, x=None)
+
+            if x_new = x_rand:
+                return 'reached'
+            else:
+                return 'advanced'
+
+        return 'trapped'
+
+    def nearest_neighbor(self, x_rand):
+        return 0
+
+    def new_state(self, x_rand, x_near):
+        return 0
 
 
 

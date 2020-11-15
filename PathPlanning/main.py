@@ -41,14 +41,14 @@ env = Environment.Environment([0, 10], [0, 10], [O_0, O_1, O_2, O_3, O_4], (2, 1
 #env.sample(100, 'Ν')
 #env.refresh_figure()
 
-x_0   = np.array([0.0,    np.radians(40.5),    np.radians(0),      0, 0])
-q_ref = np.array([4.0,    np.radians(0),        np.radians(0)])
+x_0   = np.array([0.0,    np.radians(120.0),    np.radians(120),      0, 0])
+q_ref = np.array([2.0,    np.radians(-20),        np.radians(-20)])
 t_1 = 0
 t_2 = 5.0
-N = 2000
+N = 500
 robo = Robot.Robot(x_0, q_ref, t_1, t_2, N)
 
-#sol = robo.get_trajectory()
+sol = robo.get_trajectory()
 
 T = Tree.Tree([0, 0])
 

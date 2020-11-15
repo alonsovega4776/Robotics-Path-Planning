@@ -16,7 +16,7 @@ class Robot:
                 '_N', '_t_1', '_t_2', '_t',\
                 '_q_ε',\
                 '_γ_1', '_γ_2',\
-                '_heading_control_EN'
+                '_heading_control_EN', '_distance_e_init', '_error_pph'
 
     def __init__(self, x_initial, q_ref, t_1, t_2, step_number):
         self._x_0         = x_initial
@@ -43,7 +43,47 @@ class Robot:
         self._γ_1 = 1.0
         self._γ_2 = 1.0
 
+        q_c_0 = x_initial[0:3]
+        q_e   = q_c_0 - q_ref             # initial error in q_c
+        x_e_0 = q_e[0] * np.cos(q_e[1])
+        y_e_0 = q_e[0] * np.sin(q_e[1])
+        self._distance_e_init = np.linalg.norm([x_e_0, y_e_0])
         self._heading_control_EN = False
+        self._error_pph = 100               # in [0, 100]
+
+    def get_error_pph(self):
+        return self._error_pph
+
+    def set_error_pph(self, pph):
+        self._error_pph = pph
+
+    def set_q_ref(self, q_ref):
+        self._q_ref = q_ref
+
+    def get_q_ref(self):
+        return self._q_ref
+
+    def set_x_0(self, x_initial):
+        self._x_0 = x_initial
+
+    def get_x_0(self):
+        return self._x_0
+
+    def set_heading_controller(self, enable=False):
+        self._heading_control_EN = enable
+
+    def get_heading_controller(self):
+        return self._heading_control_EN
+
+    def set_time_duration(self, start_time, end_time):
+        self._t_1 = start_time
+        self._t_2 = end_time
+
+    def get_time_duration(self):
+        return self._t_1, self._t_2
+
+    def set_number_time_steps(self, N):
+        self._N = N
 
     def get_trajectory(self):
         sol = integrate.odeint(self.f_function, self._x_0, self._t,
@@ -123,6 +163,21 @@ class Robot:
         sol[:, 4]   = np.degrees(sol[:, 4])
         return sol
 
+    def check_position(self, q_e):
+        ρ_e = q_e[0]
+        φ_e = q_e[1]
+        θ_e = q_e[2]
+
+        x_e = ρ_e*np.cos(φ_e)
+        y_e = ρ_e*np.sin(φ_e)
+
+        d_e       = np.linalg.norm([x_e, y_e])
+        d_0       = self._distance_e_init
+        error_pph = self._error_pph/100
+
+        EN = d_e < error_pph*d_0
+        self.set_heading_controller(enable=EN)
+
     # _______________________________________xDot = f(x,t,u______)______________________________________________________
     def f_function(self, x, t):
         q_c = x[0:3]
@@ -145,7 +200,7 @@ class Robot:
 
         q_eDot = q_cDot - q_refDot      # error in q_cDot
 
-        self._heading_control_EN = (np.abs(ρ_e) < 0.75) & (np.abs(np.degrees(φ_e)) < 5.0)
+        self.check_position(q_e)
         if self._heading_control_EN:
             u_head = self.heading_controller_chwa(q_c, q_cDot, q_e, q_eDot)
             z_cDot = u_head - f         # x[0:3]Dot = f(x)
