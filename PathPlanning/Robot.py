@@ -16,7 +16,7 @@ class Robot:
                 '_N', '_t_1', '_t_2', '_t',\
                 '_q_ε',\
                 '_γ_1', '_γ_2',\
-                '_heading_control_EN', '_distance_e_init', '_error_pph'
+                '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph'
 
     def __init__(self, x_initial, q_ref, t_1, t_2, step_number):
         self._x_0         = x_initial
@@ -45,17 +45,22 @@ class Robot:
 
         q_c_0 = x_initial[0:3]
         q_e   = q_c_0 - q_ref             # initial error in q_c
-        x_e_0 = q_e[0] * np.cos(q_e[1])
-        y_e_0 = q_e[0] * np.sin(q_e[1])
-        self._distance_e_init = np.linalg.norm([x_e_0, y_e_0])
+
         self._heading_control_EN = False
-        self._error_pph = 100               # in [0, 100]
+        self._errorTol_pos_pph = 100               # in [0, 100]
+        self._errorTol_head_pph = 100              # in [0, 100]
 
-    def get_error_pph(self):
-        return self._error_pph
+    def get_errorTol_pos_pph(self):
+        return self._errorTol_pos_pph
 
-    def set_error_pph(self, pph):
-        self._error_pph = pph
+    def set_errorTol_pos_pph(self, pph):
+        self._errorTol_pos_pph = pph
+
+    def get_errorTol_head_pph(self):
+        return self._errorTol_head_pph
+
+    def set_errorTol_head_pph(self, pph):
+        self._errorTol_head_pph = pph
 
     def set_q_ref(self, q_ref):
         self._q_ref = q_ref
@@ -78,12 +83,14 @@ class Robot:
     def set_time_duration(self, start_time, end_time):
         self._t_1 = start_time
         self._t_2 = end_time
+        self._t = t = np.linspace(start_time, end_time, self._N)
 
     def get_time_duration(self):
         return self._t_1, self._t_2
 
     def set_number_time_steps(self, N):
         self._N = N
+        self._t = t = np.linspace(self._t_1, self._t_2, N)
 
     def get_trajectory(self):
         sol = integrate.odeint(self.f_function, self._x_0, self._t,
@@ -140,6 +147,7 @@ class Robot:
 
         fig.show()
 
+        """
         x_c = np.multiply(sol[:, 0], np.cos(sol[:, 1]))
         y_c = np.multiply(sol[:, 0], np.sin(sol[:, 1]))
 
@@ -158,24 +166,26 @@ class Robot:
                         s=900.0, color=(0.1, 0.1, 0.1, 0.8), marker='o')
 
         fig_xy.show()
+        #"""
 
         sol[:, 1:3] = np.degrees(sol[:, 1:3])
         sol[:, 4]   = np.degrees(sol[:, 4])
         return sol
 
-    def check_position(self, q_e):
+    def controller_alternator(self, q_e, t):
         ρ_e = q_e[0]
-        φ_e = q_e[1]
         θ_e = q_e[2]
 
-        x_e = ρ_e*np.cos(φ_e)
-        y_e = ρ_e*np.sin(φ_e)
+        ρ_e_0 = self._x_0[0] - self._q_ref[0]
+        θ_e_0 = self._x_0[2] - self._q_ref[2]
 
-        d_e       = np.linalg.norm([x_e, y_e])
-        d_0       = self._distance_e_init
-        error_pph = self._error_pph/100
+        ρ_0 = self._x_0[0]
+        θ_0 = self._x_0[2]
 
-        EN = d_e < error_pph*d_0
+        tol_ρ = ρ_0*(self._errorTol_pos_pph/100)
+        tol_θ = θ_0*(self._errorTol_head_pph/100)
+
+        EN = (t > 0.0) & (t < 1.0)
         self.set_heading_controller(enable=EN)
 
     # _______________________________________xDot = f(x,t,u______)______________________________________________________
@@ -200,7 +210,7 @@ class Robot:
 
         q_eDot = q_cDot - q_refDot      # error in q_cDot
 
-        self.check_position(q_e)
+        self.controller_alternator(q_e, t)
         if self._heading_control_EN:
             u_head = self.heading_controller_chwa(q_c, q_cDot, q_e, q_eDot)
             z_cDot = u_head - f         # x[0:3]Dot = f(x)
@@ -488,4 +498,14 @@ class Robot:
 
         S = np.column_stack([S_1, S_2])
         return S
+
+    def polar2xy(self, q):
+        ρ = q[0]
+        φ = q[1]
+
+        x = ρ * np.cos(φ)
+        y = ρ * np.sin(φ)
+
+        r = np.array([x, y])
+        return r
 

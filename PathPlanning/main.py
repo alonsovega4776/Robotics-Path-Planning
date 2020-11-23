@@ -6,10 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
 
-O_0 = Obstacle.Obstacle([(0, 0),
-                         (0.5, 0.0),
-                         (0.5, 1.0),
-                         (0.3, 0.3)],
+O_0 = Obstacle.Obstacle([(0.0, 1.0),
+                         (1.5, 2.0),
+                         (0.5, 2.0),
+                         (0.3, 1.3)],
                         convex=True)
 
 O_1 = Obstacle.Obstacle([(5.0, 6.0),
@@ -17,10 +17,10 @@ O_1 = Obstacle.Obstacle([(5.0, 6.0),
                          (1.7, 5.5)],
                         convex=True)
 
-O_2 = Obstacle.Obstacle([(2.0, 2.0),
-                         (3.0, 0.5),
-                         (4.0, 2.0),
-                         (3.0, 4.0)],
+O_2 = Obstacle.Obstacle([(2.0, 3.0),
+                         (3.0, 3.5),
+                         (4.0, 3.0),
+                         (3.0, 5.5)],
                         convex=True)
 
 O_3 = Obstacle.Obstacle([(6.0, 2.0),
@@ -36,21 +36,23 @@ O_4 = Obstacle.Obstacle([(6.0, 5.0),
                         convex=True)
 
 env = Environment.Environment([0, 10], [0, 10], [O_0, O_1, O_2, O_3, O_4], (2, 1), (8, 8))
+env.print_environment()
 
-#env.print_environment()
-#env.sample(100, 'Ν')
-#env.refresh_figure()
+x_0   = np.array([1.0,    np.radians(45.0),    np.radians(-90.0),      0, 0])
+q_ref = np.array([4.0,    np.radians(90),      np.radians(100.0)])
+t_1   = 0.0
+t_2   = 2.0
+N     = 100
 
-x_0   = np.array([0.0,    np.radians(120.0),    np.radians(120),      0, 0])
-q_ref = np.array([2.0,    np.radians(-20),        np.radians(-20)])
-t_1 = 0
-t_2 = 5.0
-N = 500
-robo = Robot.Robot(x_0, q_ref, t_1, t_2, N)
+env.get_robot().set_x_0(x_0)
+env.get_robot().set_q_ref(q_ref)
+env.get_robot().set_time_duration(t_1, t_2)
+env.get_robot().set_number_time_steps(N)
 
-sol = robo.get_trajectory()
+env.draw_robot_trajectory()
+env.refresh_figure()
 
-T = Tree.Tree([0, 0])
+
 
 
 

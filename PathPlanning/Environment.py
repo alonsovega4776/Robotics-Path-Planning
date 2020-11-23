@@ -16,7 +16,8 @@ class Environment:
                 '_obstacleList',\
                 '_goal', '_start', \
                 '_axes', '_figure', \
-                '_robot', '_RRTtree'
+                '_robot', '_RRTtree', \
+                '_cov_matrix'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -36,7 +37,10 @@ class Environment:
         self._goal  = goal
         self._start = start
 
+        self._cov_matrix = np.diag([1.5, 1.5])
+
         self._figure, self._axes = plt.subplots()
+        self._axes.grid(True)
 
     def get_robot(self):
         return self._robot
@@ -137,8 +141,6 @@ class Environment:
 
         self._axes.set_xlim(self._xMin - limit, self._xMax + limit)
         self._axes.set_ylim(self._yMin - limit, self._yMax + limit)
-        plt.close(self._figure)
-        self._figure.show()
 
     def axes(self):
         return self._axes
@@ -169,8 +171,12 @@ class Environment:
             x_rand = np.random.uniform(self._xMin, self._xMax, n)
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
         else:
-            Σ = np.diag([1.5, 1.5])
-            μ = np.array([self._robot[0], self._robot[1]])
+            q_0 = self._robot.get_x_0()[0:3]
+            r_0 = self.polar2xy(q_0)
+
+            Σ = self._cov_matrix
+            μ = np.array([r_0[0], r_0[1]])
+
             sample = np.random.multivariate_normal(μ, Σ, n)
             x_rand = sample[:, 0]
             y_rand = sample[:, 1]
@@ -186,17 +192,40 @@ class Environment:
         self._axes.scatter(x_rand, y_rand,
                            s=10.00, color=color, marker='o')
 
+    def draw_robot_trajectory(self):
+        sol = self._robot.get_trajectory()
+
+        x_c = np.multiply(sol[:, 0], np.cos(np.radians(sol[:, 1])))
+        y_c = np.multiply(sol[:, 0], np.sin(np.radians(sol[:, 1])))
+
+        self._axes.plot(x_c, y_c)
+
     def refresh_figure(self):
-        plt.close(self._figure)
+        #plt.close(self._figure)
+        plt.figure()
         self._figure.show()
 
+    def polar2xy(self, q):
+        ρ = q[0]
+        φ = q[1]
+
+        x = ρ * np.cos(φ)
+        y = ρ * np.sin(φ)
+
+        r = np.array([x, y])
+        return r
+
+    """"
+    # _______________________________________________RRT___________________________________________________________
     def build_RRT(self, K):
         for k in range(0, K+1):
             x_rand = self.random_state()
             self.extend_tree(x_rand)
 
     def random_state(self):
-        return 0
+        self
+
+        return x
 
     def extend_tree(self, x_rand):
         x_near = self.nearest_neighbor(x_rand)
@@ -204,7 +233,7 @@ class Environment:
             self._RRTtree.insert_vertex(xCoord_new, yCoord_new, v_near, element=x_new)
             self._RRTtree.insert_edge(v_near, v_new, x=None)
 
-            if x_new = x_rand:
+            if x_new == x_rand:
                 return 'reached'
             else:
                 return 'advanced'
@@ -216,9 +245,8 @@ class Environment:
 
     def new_state(self, x_rand, x_near):
         return 0
-
-
-
+    # _______________________________________________RRT___________________________________________________________
+    #"""
 
 
 
