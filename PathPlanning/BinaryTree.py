@@ -54,7 +54,7 @@ class KdTree(SpatialGraph.Graph):
         super().__init__(directed=False)
         self._root = self.insert_vertex(padre=None, side=None)
 
-        self._metric_weight = np.array([1.0, 1.0])
+        self._metric_weight = np.array([1.0, 1.0, 2.0])
 
     def get_root(self):
         return self._root
@@ -87,10 +87,10 @@ class KdTree(SpatialGraph.Graph):
         metric_x = np.abs(Δr[0])
         metric_y = np.abs(Δr[1])
 
-        α_a_half = q_a[2]/2
-        α_b_half = q_b[2]/2
-        h_a = np.quaternion([np.cos(α_a_half), 0, 0, np.sin(α_a_half)])
-        h_b = np.quaternion([np.cos(α_b_half), 0, 0, np.sin(α_b_half)])
+        θ_a_half = q_a[2]/2
+        θ_b_half = q_b[2]/2
+        h_a = np.quaternion(np.cos(θ_a_half), 0, 0, np.sin(θ_a_half))
+        h_b = np.quaternion(np.cos(θ_b_half), 0, 0, np.sin(θ_b_half))
         dot_prod = np.dot(quaternion.as_float_array(h_a), quaternion.as_float_array(h_b))
         metric_θ = np.arccos(np.abs(dot_prod))
         metric_θ = metric_θ * metric_θ

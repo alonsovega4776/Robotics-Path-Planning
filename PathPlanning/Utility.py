@@ -6,7 +6,7 @@ Useful functions
 import numpy as np
 
 
-def polar2xy(q):
+def polar2xy(q):            # make sure angles are in radian
     ρ = q[0]
     φ = q[1]
 
@@ -17,7 +17,7 @@ def polar2xy(q):
     return r
 
 
-def polar2xy_large(q_mat):
+def polar2xy_large(q_mat):  # make sure angles are in radian
     ρ_vect = q_mat[:, 0]
     φ_vect = q_mat[:, 1]
 
