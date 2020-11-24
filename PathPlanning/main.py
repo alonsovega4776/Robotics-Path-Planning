@@ -55,9 +55,6 @@ env.draw_robot_trajectory()
 
 #"""  # Testing Environment _____________________________________________
 
-kdTree = BinaryTree.KdTree()
-
-
 
 
 

@@ -85,7 +85,9 @@ class KdTree(SpatialGraph.Graph):
         r_b = util.polar2xy(q_b)
         Δr = r_b - r_a
         metric_x = np.abs(Δr[0])
+        metric_x = metric_x*metric_x
         metric_y = np.abs(Δr[1])
+        metric_y = metric_y*metric_y
 
         θ_a_half = q_a[2]/2
         θ_b_half = q_b[2]/2
@@ -96,6 +98,7 @@ class KdTree(SpatialGraph.Graph):
         metric_θ = metric_θ * metric_θ
 
         metric = np.dot(self._metric_weight, np.array([metric_x, metric_y, metric_θ]))
+        metric = np.sqrt(metric)
         return metric
 
 
