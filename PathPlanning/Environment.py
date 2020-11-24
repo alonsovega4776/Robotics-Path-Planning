@@ -5,6 +5,7 @@ Environment Class
 """
 import Robot
 import Tree
+import Utility as util
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,7 +18,8 @@ class Environment:
                 '_goal', '_start', \
                 '_axes', '_figure', \
                 '_robot', '_RRTtree', \
-                '_cov_matrix'
+                '_cov_matrix', \
+                '_kd_Tree'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -172,7 +174,7 @@ class Environment:
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
         else:
             q_0 = self._robot.get_x_0()[0:3]
-            r_0 = self.polar2xy(q_0)
+            r_0 = util.polar2xy(q_0)
 
             Σ = self._cov_matrix
             μ = np.array([r_0[0], r_0[1]])
@@ -195,25 +197,17 @@ class Environment:
     def draw_robot_trajectory(self):
         sol = self._robot.get_trajectory()
 
-        x_c = np.multiply(sol[:, 0], np.cos(np.radians(sol[:, 1])))
-        y_c = np.multiply(sol[:, 0], np.sin(np.radians(sol[:, 1])))
+        q_cTilda = sol[:, 0:2]
+        (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
         self._axes.plot(x_c, y_c)
+
+        return sol
 
     def refresh_figure(self):
         #plt.close(self._figure)
         plt.figure()
         self._figure.show()
-
-    def polar2xy(self, q):
-        ρ = q[0]
-        φ = q[1]
-
-        x = ρ * np.cos(φ)
-        y = ρ * np.sin(φ)
-
-        r = np.array([x, y])
-        return r
 
     """"
     # _______________________________________________RRT___________________________________________________________
@@ -228,7 +222,7 @@ class Environment:
         return x
 
     def extend_tree(self, x_rand):
-        x_near = self.nearest_neighbor(x_rand)
+        x_near = self.nearest_neighbor(q_rand)
         if new_state(x_rand, x_near):
             self._RRTtree.insert_vertex(xCoord_new, yCoord_new, v_near, element=x_new)
             self._RRTtree.insert_edge(v_near, v_new, x=None)
@@ -240,7 +234,12 @@ class Environment:
 
         return 'trapped'
 
-    def nearest_neighbor(self, x_rand):
+    def nearest_neighbor(self, x_rand, exact):
+        if (exact):
+            naviee way 
+        else:
+            kd tree way 
+        
         return 0
 
     def new_state(self, x_rand, x_near):
