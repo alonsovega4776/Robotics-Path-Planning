@@ -36,7 +36,7 @@ O_4 = Obstacle.Obstacle([(6.0, 5.0),
                          (4.0, 9.0),
                          (5.5, 10.0)],
                         convex=True)
-"""    Testing Environment _____________________________________________
+#"""    Testing Environment _____________________________________________
 env = Environment.Environment([0, 10], [0, 10], [O_0, O_1, O_2, O_3, O_4], (2, 1), (8, 8))
 env.print_environment()
 
@@ -51,7 +51,10 @@ env.get_robot().set_q_ref(q_ref)
 env.get_robot().set_time_duration(t_1, t_2)
 env.get_robot().set_number_time_steps(N)
 
-env.draw_robot_trajectory()
+
+env.play_robot_trajectory()
+env.refresh_figure()
+
 
 #"""  # Testing Environment _____________________________________________
 

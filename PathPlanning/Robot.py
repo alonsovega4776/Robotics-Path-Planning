@@ -16,7 +16,8 @@ class Robot:
                 '_N', '_t_1', '_t_2', '_t',\
                 '_q_ε',\
                 '_γ_1', '_γ_2',\
-                '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph'
+                '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph',\
+                '_radius', '_wheel_radius', '_wheel_center_distance'
 
     def __init__(self, x_initial, q_ref, t_1, t_2, step_number):
         self._x_0         = x_initial
@@ -47,8 +48,12 @@ class Robot:
         q_e   = q_c_0 - q_ref             # initial error in q_c
 
         self._heading_control_EN = False
-        self._errorTol_pos_pph = 100               # in [0, 100]
-        self._errorTol_head_pph = 100              # in [0, 100]
+        self._errorTol_pos_pph   = 100               # in [0, 100]
+        self._errorTol_head_pph  = 100               # in [0, 100]
+
+        self._radius                = 0.25
+        self._wheel_radius          = 0.5
+        self._wheel_center_distance = 0.1
 
     def get_errorTol_pos_pph(self):
         return self._errorTol_pos_pph
@@ -92,84 +97,84 @@ class Robot:
         self._N = N
         self._t = t = np.linspace(self._t_1, self._t_2, N)
 
-    def get_trajectory(self):
+    def get_trajectory(self, degrees=False, plot=False):
         sol = integrate.odeint(self.f_function, self._x_0, self._t,
                                hmax=0.001, rtol=1.0e-8, atol=1.0e-8)
 
-        fig, axes = plt.subplots(nrows=2, ncols=3, sharex=False)
+        if plot:
+            fig, axes = plt.subplots(nrows=2, ncols=3, sharex=False)
 
-        ρ_ref = np.ones_like(self._t)*self._q_ref[0]
-        φ_ref = np.ones_like(self._t)*np.degrees(self._q_ref[1])
-        θ_ref = np.ones_like(self._t)*np.degrees(self._q_ref[2])
+            ρ_ref = np.ones_like(self._t)*self._q_ref[0]
+            φ_ref = np.ones_like(self._t)*np.degrees(self._q_ref[1])
+            θ_ref = np.ones_like(self._t)*np.degrees(self._q_ref[2])
 
-        font = {'family': 'serif',
-                'color': 'darkred',
-                'weight': 'normal',
-                'size': 10,
-                }
+            font = {'family': 'serif',
+                    'color': 'darkred',
+                    'weight': 'normal',
+                    'size': 10,
+                    }
 
-        axes[0, 0].plot(self._t, sol[:, 0], 'b')
-        axes[0, 0].plot(self._t, ρ_ref, 'g--')
-        axes[0, 0].set_title('ρ$_c$(t): Radial Distance', font)
-        axes[0, 0].set_xlabel('t [s]')
-        axes[0, 0].set_ylabel('[m]')
-        axes[0, 0].grid(True)
-        axes[0, 1].plot(self._t, np.degrees(sol[:, 1]), 'b')
-        axes[0, 1].plot(self._t, φ_ref, 'g--')
-        axes[0, 1].set_title('φ$_c$(t): Angular Coordinate', font)
-        axes[0, 1].set_xlabel('t [s]')
-        axes[0, 1].set_ylabel('[°]')
-        axes[0, 1].grid(True)
-        axes[0, 2].plot(self._t, np.degrees(sol[:, 2]), 'b')
-        axes[0, 2].plot(self._t, θ_ref, 'g--')
-        axes[0, 2].set_title('θ$_c$(t): Orientation', font)
-        axes[0, 2].set_xlabel('t [s]')
-        axes[0, 2].set_ylabel('[°]')
-        axes[0, 2].grid(True)
+            axes[0, 0].plot(self._t, sol[:, 0], 'b')
+            axes[0, 0].plot(self._t, ρ_ref, 'g--')
+            axes[0, 0].set_title('ρ$_c$(t): Radial Distance', font)
+            axes[0, 0].set_xlabel('t [s]')
+            axes[0, 0].set_ylabel('[m]')
+            axes[0, 0].grid(True)
+            axes[0, 1].plot(self._t, np.degrees(sol[:, 1]), 'b')
+            axes[0, 1].plot(self._t, φ_ref, 'g--')
+            axes[0, 1].set_title('φ$_c$(t): Angular Coordinate', font)
+            axes[0, 1].set_xlabel('t [s]')
+            axes[0, 1].set_ylabel('[°]')
+            axes[0, 1].grid(True)
+            axes[0, 2].plot(self._t, np.degrees(sol[:, 2]), 'b')
+            axes[0, 2].plot(self._t, θ_ref, 'g--')
+            axes[0, 2].set_title('θ$_c$(t): Orientation', font)
+            axes[0, 2].set_xlabel('t [s]')
+            axes[0, 2].set_ylabel('[°]')
+            axes[0, 2].grid(True)
 
-        axes[1, 0].plot(self._t, sol[:, 0] - ρ_ref, 'r')
-        axes[1, 0].plot(self._t, np.zeros_like(self._t), 'g--')
-        axes[1, 0].set_title('ρ$_e$(t): Error', font)
-        axes[1, 0].set_xlabel('t [s]')
-        axes[1, 0].set_ylabel('[m]')
-        axes[1, 0].grid(True)
-        axes[1, 1].plot(self._t, np.degrees(sol[:, 1]) - φ_ref, 'r')
-        axes[1, 1].plot(self._t, np.zeros_like(self._t), 'g--')
-        axes[1, 1].set_title('φ$_e$(t): Error', font)
-        axes[1, 1].set_xlabel('t [s]')
-        axes[1, 1].set_ylabel('[°]')
-        axes[1, 1].grid(True)
-        axes[1, 2].plot(self._t, np.degrees(sol[:, 2]) - θ_ref, 'r')
-        axes[1, 2].plot(self._t, np.zeros_like(self._t), 'g--')
-        axes[1, 2].set_title('θ$_e$(t): Error', font)
-        axes[1, 2].set_xlabel('t [s]')
-        axes[1, 2].grid(True)
+            axes[1, 0].plot(self._t, sol[:, 0] - ρ_ref, 'r')
+            axes[1, 0].plot(self._t, np.zeros_like(self._t), 'g--')
+            axes[1, 0].set_title('ρ$_e$(t): Error', font)
+            axes[1, 0].set_xlabel('t [s]')
+            axes[1, 0].set_ylabel('[m]')
+            axes[1, 0].grid(True)
+            axes[1, 1].plot(self._t, np.degrees(sol[:, 1]) - φ_ref, 'r')
+            axes[1, 1].plot(self._t, np.zeros_like(self._t), 'g--')
+            axes[1, 1].set_title('φ$_e$(t): Error', font)
+            axes[1, 1].set_xlabel('t [s]')
+            axes[1, 1].set_ylabel('[°]')
+            axes[1, 1].grid(True)
+            axes[1, 2].plot(self._t, np.degrees(sol[:, 2]) - θ_ref, 'r')
+            axes[1, 2].plot(self._t, np.zeros_like(self._t), 'g--')
+            axes[1, 2].set_title('θ$_e$(t): Error', font)
+            axes[1, 2].set_xlabel('t [s]')
+            axes[1, 2].grid(True)
 
-        fig.show()
+            fig.show()
 
-        #"""
-        x_c = np.multiply(sol[:, 0], np.cos(sol[:, 1]))
-        y_c = np.multiply(sol[:, 0], np.sin(sol[:, 1]))
+            x_c = np.multiply(sol[:, 0], np.cos(sol[:, 1]))
+            y_c = np.multiply(sol[:, 0], np.sin(sol[:, 1]))
 
-        fig_xy, axes_xy = plt.subplots(nrows=1, ncols=1, sharex=False)
-        axes_xy.plot(x_c, y_c)
-        axes_xy.grid(True)
-        axes_xy.set_title('Trajectory', font)
-        axes_xy.set_xlabel('[m]')
-        axes_xy.set_ylabel('[m]')
+            fig_xy, axes_xy = plt.subplots(nrows=1, ncols=1, sharex=False)
+            axes_xy.plot(x_c, y_c)
+            axes_xy.grid(True)
+            axes_xy.set_title('Trajectory', font)
+            axes_xy.set_xlabel('[m]')
+            axes_xy.set_ylabel('[m]')
 
-        x_ref = self._q_ref[0]*np.cos(self._q_ref[1])
-        y_ref = self._q_ref[0] * np.sin(self._q_ref[1])
-        axes_xy.scatter(x_ref, y_ref,
-                           s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='*')
-        axes_xy.scatter(x_c[0], y_c[0],
-                        s=900.0, color=(0.1, 0.1, 0.1, 0.8), marker='o')
+            x_ref = self._q_ref[0]*np.cos(self._q_ref[1])
+            y_ref = self._q_ref[0] * np.sin(self._q_ref[1])
+            axes_xy.scatter(x_ref, y_ref,
+                               s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='*')
+            axes_xy.scatter(x_c[0], y_c[0],
+                            s=900.0, color=(0.1, 0.1, 0.1, 0.8), marker='o')
 
-        fig_xy.show()
-        #"""
+            fig_xy.show()
 
-        sol[:, 1:3] = np.degrees(sol[:, 1:3])
-        sol[:, 4]   = np.degrees(sol[:, 4])
+        if degrees:
+            sol[:, 1:3] = np.degrees(sol[:, 1:3])
+            sol[:, 4]   = np.degrees(sol[:, 4])
         return sol
 
     def controller_alternator(self, q_e, t):

@@ -10,6 +10,7 @@ import Utility as util
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import collections as pltC
+from matplotlib import patches
 
 
 class Environment:
@@ -42,6 +43,9 @@ class Environment:
         self._cov_matrix = np.diag([1.5, 1.5])
 
         self._figure, self._axes = plt.subplots()
+        self._figure.set_figheight(5.0)
+        self._figure.set_figwidth(5.0)
+
         self._axes.grid(True)
 
     def get_robot(self):
@@ -139,7 +143,7 @@ class Environment:
         segments = pltC.LineCollection(points, linewidths=0.75, colors=(0, 0, 1, 1))
         self._axes.add_collection(segments)
 
-        self._axes.scatter(self._goal[0], self._goal[1], s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='*')
+        self._axes.scatter(self._goal[0], self._goal[1], s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='o')
 
         self._axes.set_xlim(self._xMin - limit, self._xMax + limit)
         self._axes.set_ylim(self._yMin - limit, self._yMax + limit)
@@ -195,7 +199,7 @@ class Environment:
                            s=10.00, color=color, marker='o')
 
     def draw_robot_trajectory(self):
-        sol = self._robot.get_trajectory()
+        sol = self._robot.get_trajectory(degrees=True, plot=False)
 
         q_cTilda = sol[:, 0:2]
         q_cTilda[:, 1] = np.radians(q_cTilda[:, 1])
@@ -205,9 +209,33 @@ class Environment:
 
         return sol
 
+    def play_robot_trajectory(self):
+        #xTilda = self._robot.get_trajectory(degrees=False, plot=False)
+        #q_cTilda = xTilda[0:3]
+        #(x_c, y_c) = util.polar2xy_large(q_cTilda)
+
+        r = self._start
+        x_c = r[0]
+        y_c = r[1]
+
+
+
+
+
+
+        base = patches.Circle((x_c, y_c), 0.25, color=(0.0, 0.0, 0.0, 0.6))
+        wheels = [[wheel_leftBack, wheel_leftFront],
+                  [wheel_rightBack, wheel_rightFront]]
+        wheel_color = np.array([(0, 0, 0, 1), (0, 0, 0, 1)])
+        wheel_art = pltC.LineCollection(wheels, colors=wheel_color, linewidths=2)
+
+        self._axes.add_artist(base)
+        self._axes.add_collection(wheel_art)
+
+
+
     def refresh_figure(self):
-        #plt.close(self._figure)
-        plt.figure()
+        plt.close(self._figure)
         self._figure.show()
 
     """"
