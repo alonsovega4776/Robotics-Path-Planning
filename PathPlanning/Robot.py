@@ -147,7 +147,7 @@ class Robot:
 
         fig.show()
 
-        """
+        #"""
         x_c = np.multiply(sol[:, 0], np.cos(sol[:, 1]))
         y_c = np.multiply(sol[:, 0], np.sin(sol[:, 1]))
 

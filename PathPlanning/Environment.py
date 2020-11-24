@@ -198,6 +198,7 @@ class Environment:
         sol = self._robot.get_trajectory()
 
         q_cTilda = sol[:, 0:2]
+        q_cTilda[:, 1] = np.radians(q_cTilda[:, 1])
         (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
         self._axes.plot(x_c, y_c)

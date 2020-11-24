@@ -6,6 +6,7 @@ import BinaryTree
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import integrate
+import quaternion
 
 O_0 = Obstacle.Obstacle([(0.0, 1.0),
                          (1.5, 2.0),
@@ -51,11 +52,10 @@ env.get_robot().set_time_duration(t_1, t_2)
 env.get_robot().set_number_time_steps(N)
 
 env.draw_robot_trajectory()
-env.refresh_figure()
+
 #"""  # Testing Environment _____________________________________________
 
 
-tree = BinaryTree.KdTree()
 
 
 
