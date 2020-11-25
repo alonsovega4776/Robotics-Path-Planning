@@ -27,12 +27,12 @@ def polar2xy_large(q_mat):  # make sure angles are in radian
     return x_c, y_c
 
 
-def SC(θ):
+def SC_vect(θ):
     return np.array([np.sin(θ),
                      np.cos(θ)])
 
 
-def CS(θ):
+def CS_vect(θ):
     return np.array([np.cos(θ),
                      np.sin(θ)])
 

@@ -210,33 +210,56 @@ class Environment:
         return sol
 
     def play_robot_trajectory(self):
-        #xTilda = self._robot.get_trajectory(degrees=False, plot=False)
-        #q_cTilda = xTilda[0:3]
-        #(x_c, y_c) = util.polar2xy_large(q_cTilda)
+        xTilda = self._robot.get_trajectory(degrees=False, plot=False)
+        q_cTilda = xTilda[:, 0:3]
+        (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
-        r = self._start
-        x_c = r[0]
-        y_c = r[1]
+        for i in range(0, len(x_c)):
+            r_c = np.array([x_c[i], y_c[i]])
+            θ_c = q_cTilda[i, 2]
 
+            R = self._robot.get_wheel_radius()
+            R_robot = self._robot.get_base_radius()
+            l = self._robot.get_wheel_center_distance()
 
+            wheel_rightFront = r_c + np.matmul(np.diag([1, -1]), l*util.SC_vect(θ_c)) \
+                                   + np.matmul(np.diag([1, 1]),   R*util.CS_vect(θ_c))
+            wheel_rightBack  = r_c + np.matmul(np.diag([1, -1]), l*util.SC_vect(θ_c)) \
+                                   + np.matmul(np.diag([-1, -1]), R*util.CS_vect(θ_c))
+            wheel_leftFront  = r_c + np.matmul(np.diag([-1, 1]), l*util.SC_vect(θ_c)) \
+                                   + np.matmul(np.diag([1, 1]),   R*util.CS_vect(θ_c))
+            wheel_leftBack   = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c)) \
+                                   + np.matmul(np.diag([-1, -1]), R * util.CS_vect(θ_c))
 
+            wheels = [[wheel_leftBack, wheel_leftFront],
+                      [wheel_rightBack, wheel_rightFront]]
+            wheel_color = np.array([(0, 0, 0, 0.85), (0, 0, 0, 0.85)])
+            wheel_art = pltC.LineCollection(wheels, colors=wheel_color, linewidths=4)
 
+            base1 = patches.Circle((r_c[0], r_c[1]),
+                                  R_robot,
+                                  color=(1.0, 0.0, 0.0, 0.7))
+            base2 = patches.Circle((r_c[0], r_c[1]),
+                                  0.70*R_robot,
+                                  color=(0.3, 0.7, 1.0, 1.0))
 
+            wheel_art.set_zorder(0)
+            base1.set_zorder(5)
+            base2.set_zorder(10)
+            art_1 = self._axes.add_collection(wheel_art)
+            art_2 = self._axes.add_artist(base1)
+            art_3 = self._axes.add_artist(base2)
 
-        base = patches.Circle((x_c, y_c), 0.25, color=(0.0, 0.0, 0.0, 0.6))
-        wheels = [[wheel_leftBack, wheel_leftFront],
-                  [wheel_rightBack, wheel_rightFront]]
-        wheel_color = np.array([(0, 0, 0, 1), (0, 0, 0, 1)])
-        wheel_art = pltC.LineCollection(wheels, colors=wheel_color, linewidths=2)
-
-        self._axes.add_artist(base)
-        self._axes.add_collection(wheel_art)
-
-
+            self.refresh_figure()
+            art_1.remove()
+            art_2.remove()
+            art_3.remove()
 
     def refresh_figure(self):
-        plt.close(self._figure)
+        plt.figure()
         self._figure.show()
+        plt.close('all')
+
 
     """"
     # _______________________________________________RRT___________________________________________________________

@@ -53,7 +53,6 @@ env.get_robot().set_number_time_steps(N)
 
 
 env.play_robot_trajectory()
-env.refresh_figure()
 
 
 #"""  # Testing Environment _____________________________________________

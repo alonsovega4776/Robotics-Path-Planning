@@ -16,8 +16,8 @@ class Robot:
                 '_N', '_t_1', '_t_2', '_t',\
                 '_q_ε',\
                 '_γ_1', '_γ_2',\
-                '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph',\
-                '_radius', '_wheel_radius', '_wheel_center_distance'
+                '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph', \
+                '_base_radius', '_wheel_radius', '_wheel_center_distance'
 
     def __init__(self, x_initial, q_ref, t_1, t_2, step_number):
         self._x_0         = x_initial
@@ -51,9 +51,18 @@ class Robot:
         self._errorTol_pos_pph   = 100               # in [0, 100]
         self._errorTol_head_pph  = 100               # in [0, 100]
 
-        self._radius                = 0.25
-        self._wheel_radius          = 0.5
-        self._wheel_center_distance = 0.1
+        self._base_radius           = 0.30
+        self._wheel_radius          = 0.35
+        self._wheel_center_distance = 0.20
+
+    def get_base_radius(self):
+        return self._base_radius
+
+    def get_wheel_radius(self):
+        return self._wheel_radius
+
+    def get_wheel_center_distance(self):
+        return self._wheel_center_distance
 
     def get_errorTol_pos_pph(self):
         return self._errorTol_pos_pph
