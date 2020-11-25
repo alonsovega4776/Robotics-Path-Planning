@@ -51,8 +51,8 @@ env.get_robot().set_q_ref(q_ref)
 env.get_robot().set_time_duration(t_1, t_2)
 env.get_robot().set_number_time_steps(N)
 
-
-env.play_robot_trajectory()
+env.draw_robot_trajectory()
+ani = env.play_robot_trajectory()
 
 
 #"""  # Testing Environment _____________________________________________

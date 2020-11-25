@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import collections as pltC
 from matplotlib import patches
+import matplotlib.animation as animation
 
 
 class Environment:
@@ -20,7 +21,8 @@ class Environment:
                 '_axes', '_figure', \
                 '_robot', '_RRTtree', \
                 '_cov_matrix', \
-                '_kd_Tree'
+                '_kd_Tree', \
+                '_xTilda'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -45,8 +47,9 @@ class Environment:
         self._figure, self._axes = plt.subplots()
         self._figure.set_figheight(5.0)
         self._figure.set_figwidth(5.0)
-
         self._axes.grid(True)
+
+        self._xTilda = []
 
     def get_robot(self):
         return self._robot
@@ -199,66 +202,71 @@ class Environment:
                            s=10.00, color=color, marker='o')
 
     def draw_robot_trajectory(self):
-        sol = self._robot.get_trajectory(degrees=True, plot=False)
+        self._xTilda = self._robot.get_trajectory(degrees=False, plot=False)
 
-        q_cTilda = sol[:, 0:2]
-        q_cTilda[:, 1] = np.radians(q_cTilda[:, 1])
+        q_cTilda = self._xTilda[:, 0:2]
         (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
         self._axes.plot(x_c, y_c)
 
-        return sol
-
     def play_robot_trajectory(self):
-        xTilda = self._robot.get_trajectory(degrees=False, plot=False)
-        q_cTilda = xTilda[:, 0:3]
+        xTilda     = self._xTilda
+        (t_1, t_2) = self._robot.get_time_duration()
+        N          = self._robot.get_number_time_steps()
+        Δt         = (t_2 - t_1)/N
+        Δt         = Δt*1000            # [ms]
+
+        robot_animation = animation.FuncAnimation(self._figure, self.animate, len(xTilda[:, 1]),
+                                                  interval=Δt, blit=True)
+        return robot_animation
+
+    def animate(self, i):
+        xTilda = self._xTilda
+        q_cTilda   = xTilda[:, 0:3]
         (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
-        for i in range(0, len(x_c)):
-            r_c = np.array([x_c[i], y_c[i]])
-            θ_c = q_cTilda[i, 2]
+        r_c = np.array([x_c[i], y_c[i]])
+        θ_c = q_cTilda[i, 2]
 
-            R = self._robot.get_wheel_radius()
-            R_robot = self._robot.get_base_radius()
-            l = self._robot.get_wheel_center_distance()
+        R       = self._robot.get_wheel_radius()
+        R_robot = self._robot.get_base_radius()
+        l       = self._robot.get_wheel_center_distance()
 
-            wheel_rightFront = r_c + np.matmul(np.diag([1, -1]), l*util.SC_vect(θ_c)) \
-                                   + np.matmul(np.diag([1, 1]),   R*util.CS_vect(θ_c))
-            wheel_rightBack  = r_c + np.matmul(np.diag([1, -1]), l*util.SC_vect(θ_c)) \
-                                   + np.matmul(np.diag([-1, -1]), R*util.CS_vect(θ_c))
-            wheel_leftFront  = r_c + np.matmul(np.diag([-1, 1]), l*util.SC_vect(θ_c)) \
-                                   + np.matmul(np.diag([1, 1]),   R*util.CS_vect(θ_c))
-            wheel_leftBack   = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c)) \
-                                   + np.matmul(np.diag([-1, -1]), R * util.CS_vect(θ_c))
+        wheel_rightFront = r_c + np.matmul(np.diag([1, -1]), l * util.SC_vect(θ_c)) \
+                               + np.matmul(np.diag([1, 1]), R * util.CS_vect(θ_c))
+        wheel_rightBack  = r_c + np.matmul(np.diag([1, -1]), l * util.SC_vect(θ_c)) \
+                               + np.matmul(np.diag([-1, -1]), R * util.CS_vect(θ_c))
+        wheel_leftFront  = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c)) \
+                               + np.matmul(np.diag([1, 1]), R * util.CS_vect(θ_c))
+        wheel_leftBack   = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c)) \
+                               + np.matmul(np.diag([-1, -1]), R * util.CS_vect(θ_c))
 
-            wheels = [[wheel_leftBack, wheel_leftFront],
-                      [wheel_rightBack, wheel_rightFront]]
-            wheel_color = np.array([(0, 0, 0, 0.85), (0, 0, 0, 0.85)])
-            wheel_art = pltC.LineCollection(wheels, colors=wheel_color, linewidths=4)
+        wheels = [[wheel_leftBack, wheel_leftFront],
+                  [wheel_rightBack, wheel_rightFront]]
+        wheel_color = np.array([(0, 0, 0, 0.85), (0, 0, 0, 0.85)])
+        wheel_art = pltC.LineCollection(wheels, colors=wheel_color, linewidths=4)
 
-            base1 = patches.Circle((r_c[0], r_c[1]),
-                                  R_robot,
-                                  color=(1.0, 0.0, 0.0, 0.7))
-            base2 = patches.Circle((r_c[0], r_c[1]),
-                                  0.70*R_robot,
-                                  color=(0.3, 0.7, 1.0, 1.0))
+        base1 = patches.Circle((r_c[0], r_c[1]),
+                               R_robot,
+                               color=(1.0, 0.0, 0.0, 0.7))
+        base2 = patches.Circle((r_c[0], r_c[1]),
+                               0.70 * R_robot,
+                               color=(0.3, 0.7, 1.0, 1.0))
 
-            wheel_art.set_zorder(0)
-            base1.set_zorder(5)
-            base2.set_zorder(10)
-            art_1 = self._axes.add_collection(wheel_art)
-            art_2 = self._axes.add_artist(base1)
-            art_3 = self._axes.add_artist(base2)
+        wheel_art.set_zorder(0)
+        base1.set_zorder(5)
+        base2.set_zorder(10)
+        art_1 = self._axes.add_collection(wheel_art)
+        art_2 = self._axes.add_artist(base1)
+        art_3 = self._axes.add_artist(base2)
+        return art_1, art_2, art_3, wheel_art, base1, base2
 
-            self.refresh_figure()
-            art_1.remove()
-            art_2.remove()
-            art_3.remove()
+
+
 
     def refresh_figure(self):
-        plt.figure()
         self._figure.show()
-        plt.close('all')
+
 
 
     """"

@@ -106,6 +106,9 @@ class Robot:
         self._N = N
         self._t = t = np.linspace(self._t_1, self._t_2, N)
 
+    def get_number_time_steps(self):
+        return self._N
+
     def get_trajectory(self, degrees=False, plot=False):
         sol = integrate.odeint(self.f_function, self._x_0, self._t,
                                hmax=0.001, rtol=1.0e-8, atol=1.0e-8)
