@@ -17,7 +17,8 @@ class Robot:
                 '_q_ε',\
                 '_γ_1', '_γ_2',\
                 '_heading_control_EN', '_errorTol_pos_pph', '_errorTol_head_pph', \
-                '_base_radius', '_wheel_radius', '_wheel_center_distance'
+                '_base_radius', '_wheel_radius', '_wheel_center_distance', \
+                '_t_θ_min', '_t_θ_max'
 
     def __init__(self, x_initial, q_ref, t_1, t_2, step_number):
         self._x_0         = x_initial
@@ -54,6 +55,21 @@ class Robot:
         self._base_radius           = 0.30
         self._wheel_radius          = 0.35
         self._wheel_center_distance = 0.20
+
+        self._t_θ_min = 0.0
+        self._t_θ_max = 0.0
+
+    def get_t_head_min(self):
+        return self._t_θ_min
+
+    def get_t_head_max(self):
+        return self._t_θ_max
+
+    def set_t_head_min(self, time):
+        self._t_θ_min = time
+
+    def set_t_head_max(self, time):
+        self._t_θ_max = time
 
     def get_base_radius(self):
         return self._base_radius
@@ -110,8 +126,9 @@ class Robot:
         return self._N
 
     def get_trajectory(self, degrees=False, plot=False):
-        sol = integrate.odeint(self.f_function, self._x_0, self._t,
-                               hmax=0.001, rtol=1.0e-8, atol=1.0e-8)
+        (sol, sol_info) = integrate.odeint(self.f_function, self._x_0, self._t,
+                                           hmax=0.001, rtol=1.0e-8, atol=1.0e-8,
+                                           full_output=True)
 
         if plot:
             fig, axes = plt.subplots(nrows=2, ncols=3, sharex=False)
@@ -187,7 +204,7 @@ class Robot:
         if degrees:
             sol[:, 1:3] = np.degrees(sol[:, 1:3])
             sol[:, 4]   = np.degrees(sol[:, 4])
-        return sol
+        return sol, sol_info
 
     def controller_alternator(self, q_e, t):
         ρ_e = q_e[0]
@@ -202,7 +219,10 @@ class Robot:
         tol_ρ = ρ_0*(self._errorTol_pos_pph/100)
         tol_θ = θ_0*(self._errorTol_head_pph/100)
 
-        EN = (t > 0.0) & (t < 1.0)
+        t_θ_min = self._t_θ_min
+        t_θ_max = self._t_θ_max
+
+        EN = (t > t_θ_min) & (t < t_θ_max)
         self.set_heading_controller(enable=EN)
 
     # _______________________________________xDot = f(x,t,u______)______________________________________________________

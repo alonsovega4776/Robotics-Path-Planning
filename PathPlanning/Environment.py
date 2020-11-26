@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib import collections as pltC
 from matplotlib import patches
-import matplotlib.animation as animation
+import Camera
 
 
 class Environment:
@@ -22,7 +22,9 @@ class Environment:
                 '_robot', '_RRTtree', \
                 '_cov_matrix', \
                 '_kd_Tree', \
-                '_xTilda'
+                '_xTilda', '_camera', \
+                '_dt_head_min_pph', '_μ_tHeadControl_pph', '_Σ_tHeadControl_pph', \
+                '_Δ_trajectory'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -49,7 +51,17 @@ class Environment:
         self._figure.set_figwidth(5.0)
         self._axes.grid(True)
 
+        self._camera = Camera.Camera(self._figure)
+
+        self._dt_head_min_pph = 50
+        self._μ_tHeadControl_pph = [0.0, 0.25]
+        self._Σ_tHeadControl_pph = [0.2, 0.2]
+
         self._xTilda = []
+        self._Δ_trajectory = 5
+
+    def get_camera(self):
+        return self._camera
 
     def get_robot(self):
         return self._robot
@@ -179,7 +191,7 @@ class Environment:
         if distribution == 'U':
             x_rand = np.random.uniform(self._xMin, self._xMax, n)
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
-        else:
+        elif  distribution == 'N':
             q_0 = self._robot.get_x_0()[0:3]
             r_0 = util.polar2xy(q_0)
 
@@ -189,6 +201,8 @@ class Environment:
             sample = np.random.multivariate_normal(μ, Σ, n)
             x_rand = sample[:, 0]
             y_rand = sample[:, 1]
+        else:
+            print('\nERROR: no such distribution.\n')
 
         color = []
         for i in range(0, len(x_rand)):
@@ -201,11 +215,14 @@ class Environment:
         self._axes.scatter(x_rand, y_rand,
                            s=10.00, color=color, marker='o')
 
-    def draw_robot_trajectory(self):
-        self._xTilda = self._robot.get_trajectory(degrees=False, plot=False)
+    def draw_robot_trajectory(self, plot=False):
+        (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
+        if info['message'] != 'Integration successful.':
+            print('\nERROR: integration failed.\n')
+            exit()
 
-        q_cTilda = self._xTilda[:, 0:2]
-        (x_c, y_c) = util.polar2xy_large(q_cTilda)
+        r_cTilda = self._xTilda[:, 0:2]
+        (x_c, y_c) = util.polar2xy_large(r_cTilda)
 
         self._axes.plot(x_c, y_c)
 
@@ -216,9 +233,11 @@ class Environment:
         Δt         = (t_2 - t_1)/N
         Δt         = Δt*1000            # [ms]
 
-        robot_animation = animation.FuncAnimation(self._figure, self.animate, len(xTilda[:, 1]),
-                                                  interval=Δt, blit=True)
-        return robot_animation
+        for i in range(0, len(xTilda[:, 1])):
+            self.animate(i)
+
+        anime = self._camera.animate()
+        return anime
 
     def animate(self, i):
         xTilda = self._xTilda
@@ -241,6 +260,16 @@ class Environment:
         wheel_leftBack   = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c)) \
                                + np.matmul(np.diag([-1, -1]), R * util.CS_vect(θ_c))
 
+        head_right  = r_c + np.matmul(np.diag([1, -1]), l * util.SC_vect(θ_c))
+        head_left   = r_c + np.matmul(np.diag([-1, 1]), l * util.SC_vect(θ_c))
+        head_center = r_c + R_robot*util.CS_vect(θ_c)
+
+        head       = [[head_left, head_center],
+                      [head_right, head_center],
+                      [head_left, head_right]]
+        head_color = np.array([(0.0, 0.0, 0.0, 0.8), (0.0, 0.1, 0.0, 0.8), (0.6, 0.1, 0.2, 0.8)])
+        head_art = pltC.LineCollection(head, colors=(0.0, 0.1, 0.0, 0.8), linewidths=1.0)
+
         wheels = [[wheel_leftBack, wheel_leftFront],
                   [wheel_rightBack, wheel_rightFront]]
         wheel_color = np.array([(0, 0, 0, 0.85), (0, 0, 0, 0.85)])
@@ -256,17 +285,73 @@ class Environment:
         wheel_art.set_zorder(0)
         base1.set_zorder(5)
         base2.set_zorder(10)
+        head_art.set_zorder(20)
+
         art_1 = self._axes.add_collection(wheel_art)
         art_2 = self._axes.add_artist(base1)
         art_3 = self._axes.add_artist(base2)
-        return art_1, art_2, art_3, wheel_art, base1, base2
+        art_4 = self._axes.add_collection(head_art)
+        art_list = [art_1, art_2, art_3, art_4]
 
-
-
+        self._camera.snap(art_list)
 
     def refresh_figure(self):
         self._figure.show()
 
+    def set_random_time_control(self, distribution='U'):
+        (t_1, t_2) = self._robot.get_time_duration()
+        dura = t_2 - t_1
+        dt_min = (self._dt_head_min_pph / 100) * dura
+
+        while True:
+            if distribution == 'U':
+                t_head_min = np.random.uniform(t_1, t_2)
+                t_head_max = np.random.uniform(t_1, t_2)
+            elif distribution == 'N':
+                μ_tHeadControl_pph = self._μ_tHeadControl_pph
+                Σ_tHeadControl_pph = self._Σ_tHeadControl_pph
+
+                (μ_tMin, Σ_tMin)  = (np.array(μ_tHeadControl_pph)*dura,
+                                     np.diag(Σ_tHeadControl_pph)*dura)
+
+                t_head = np.random.multivariate_normal(μ_tMin, Σ_tMin, 1)
+                t_head_min = t_head[0][0]
+                t_head_max = t_head[0][1]
+            else:
+                print('\nERROR: no such distribution.\n')
+
+            dt = t_head_max - t_head_min
+            if dt > dt_min:
+                break
+
+        self._robot.set_t_head_max(t_head_max)
+        self._robot.set_t_head_min(t_head_min)
+        return t_head_min, t_head_max
+
+    def collision_trajectory(self, plot=False):
+        r_cTilda   = self._xTilda[:, 0:2]
+        (x_c, y_c) = util.polar2xy_large(r_cTilda)
+
+        Δ_trajectory = self._Δ_trajectory
+
+        x_c_approx = []
+        y_c_approx = []
+        for i in range(0, len(x_c), Δ_trajectory):
+            x_c_approx.append(x_c[i])
+            y_c_approx.append(y_c[i])
+
+        if plot:
+            for i in range(0, len(x_c_approx)):
+                self._axes.scatter(x_c_approx[i], y_c_approx[i], s=10.0, color=(1, 0, 0, 1.0))
+
+        for i in range(0, len(x_c_approx)):
+            r_cTilda_approx_i = np.array([x_c_approx[i],
+                                          y_c_approx[i]])
+            collision_i = self.collision(r_cTilda_approx_i)
+            if collision_i:
+                return True
+
+        return False
 
 
     """"
