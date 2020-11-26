@@ -215,16 +215,28 @@ class Environment:
         self._axes.scatter(x_rand, y_rand,
                            s=10.00, color=color, marker='o')
 
+    # ________________________________________________Integration_______________________________________________________
     def draw_robot_trajectory(self, plot=False):
         (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
-        if info['message'] != 'Integration successful.':
-            print('\nERROR: integration failed.\n')
-            exit()
+
+        ode_iter = 0
+        while info['message'] != 'Integration successful.':
+            print('\nERROR: integration failed, trying again: ', ode_iter, ' \n')
+
+            if ode_iter < 3:
+                self.set_random_time_control('N')
+            else:
+                self.set_random_time_control('U')
+
+            (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
+            ode_iter = ode_iter + 1
+        print('\nIntegration successful after ', ode_iter+1, ' iterations. \n')
 
         r_cTilda = self._xTilda[:, 0:2]
         (x_c, y_c) = util.polar2xy_large(r_cTilda)
 
         self._axes.plot(x_c, y_c)
+    # ________________________________________________Integration_______________________________________________________
 
     def play_robot_trajectory(self):
         xTilda     = self._xTilda
