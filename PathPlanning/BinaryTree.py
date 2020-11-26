@@ -6,8 +6,6 @@ Binary Tree Class
 import SpatialGraph
 import Utility as util
 import numpy as np
-import quaternion
-import numba
 
 
 # ------------------------------------------------Vertex----------------------------------------------------------------
@@ -79,42 +77,3 @@ class KdTree(SpatialGraph.Graph):
 
     def is_leaf(self, v):
         return (v.right_child() is None) & (v.left_child() is None)
-
-    def metric(self, q_a, q_b):         # make sure angles are in radian
-        r_a = util.polar2xy(q_a)
-        r_b = util.polar2xy(q_b)
-        Δr  = r_b - r_a
-
-        metric_x = np.abs(Δr[0])
-        metric_x = metric_x*metric_x
-        metric_y = np.abs(Δr[1])
-        metric_y = metric_y*metric_y
-
-        θ_a_half = q_a[2]/2
-        θ_b_half = q_b[2]/2
-
-        h_a      = np.quaternion(np.cos(θ_a_half), 0, 0, np.sin(θ_a_half))
-        h_b      = np.quaternion(np.cos(θ_b_half), 0, 0, np.sin(θ_b_half))
-        dot_prod = np.dot(quaternion.as_float_array(h_a), quaternion.as_float_array(h_b))
-        metric_θ = np.arccos(np.abs(dot_prod))
-        metric_θ = metric_θ * metric_θ
-
-        metric = np.dot(self._metric_weight, np.array([metric_x, metric_y, metric_θ]))
-        metric = np.sqrt(metric)
-        return metric
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

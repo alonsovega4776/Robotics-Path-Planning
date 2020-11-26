@@ -4,6 +4,8 @@ November 23, 2020
 Useful functions
 """
 import numpy as np
+import quaternion
+import numba
 
 
 def polar2xy(q):            # make sure angles are in radian
@@ -24,6 +26,16 @@ def xy2polar(x, y):
     φ = np.arctan2(y, x)
 
     return ρ, φ
+
+
+def xy2polar_large(x_vect, y_vect):
+    r_mat = np.stack([x_vect, y_vect])
+    r_mat = np.transpose(r_mat)
+
+    ρ_vect = np.linalg.norm(r_mat, axis=1)
+    φ_vect = np.arctan2(y_vect, x_vect)
+
+    return ρ_vect, φ_vect
 
 
 def polar2xy_large(q_mat):  # make sure angles are in radian
@@ -78,6 +90,30 @@ def spherical2xyz(q):
     p = np.array([x, y, z])
     return p
 
+
+def metric(q_a, q_b, metric_weight):         # make sure angles are in radian
+    r_a = polar2xy(q_a)
+    r_b = polar2xy(q_b)
+    Δr  = r_b - r_a
+
+    metric_x = np.abs(Δr[0])
+    metric_x = metric_x*metric_x
+
+    metric_y = np.abs(Δr[1])
+    metric_y = metric_y*metric_y
+
+    θ_a_half = q_a[2]/2
+    θ_b_half = q_b[2]/2
+
+    h_a      = np.quaternion(np.cos(θ_a_half), 0, 0, np.sin(θ_a_half))
+    h_b      = np.quaternion(np.cos(θ_b_half), 0, 0, np.sin(θ_b_half))
+    dot_prod = np.dot(quaternion.as_float_array(h_a), quaternion.as_float_array(h_b))
+    metric_θ = np.arccos(np.abs(dot_prod))
+    metric_θ = metric_θ * metric_θ
+
+    metric = np.dot(metric_weight, np.array([metric_x, metric_y, metric_θ]))
+    metric = np.sqrt(metric)
+    return metric
 
 
 

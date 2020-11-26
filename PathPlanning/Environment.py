@@ -25,9 +25,10 @@ class Environment:
                 '_xTilda', '_camera', \
                 '_dt_head_min_pph', '_dt_head_max_pph', '_μ_tHeadControl_pph', '_Σ_tHeadControl_pph', \
                 '_Δ_trajectory', '_odeIterGuassMax', '_odeIterMax', \
-                '_headSD_Guass'
+                '_headSD_Guass', \
+                '_ε', '_metric_weight'
 
-    def __init__(self, X, Y, obstacle_list, start, goal):
+    def __init__(self, X, Y, obstacle_list, initial_state, goal):
         self._xMin = X[0]
         self._xMax = X[1]
 
@@ -36,16 +37,14 @@ class Environment:
 
         self._obstacleList = obstacle_list
 
-        start = np.array(start)         # initial positional state
-        goal  = np.array(goal)          # reference positional state
-        self._robot = Robot.Robot(np.concatenate((start, [0, 0, 0])),
-                                  q_ref=np.concatenate((start, [0])),
-                                  t_1=0.0, t_2=5.0, step_number=500)
+        self._robot = Robot.Robot(initial_state,
+                                  q_ref=initial_state[0:3],
+                                  t_1=0.0, t_2=2.0, step_number=100)
 
-        self._RRTtree = Tree.Tree(start)
+        self._RRTtree = Tree.Tree(initial_state)
 
         self._goal  = goal
-        self._start = start
+        self._start = util.polar2xy(initial_state[0:2])
 
         self._cov_matrix = np.diag([1.5, 1.5])
 
@@ -67,6 +66,9 @@ class Environment:
         self._odeIterMax      = 6
 
         self._headSD_Guass = 0.1
+
+        self._ε = 1.0
+        self._metric_weight = np.array([1.0, 1.0, 2.0])
 
     def get_camera(self):
         return self._camera
@@ -177,7 +179,7 @@ class Environment:
     def figure(self):
         return self._figure
 
-    def collision(self, point):
+    def collision(self, point, plot=False):
         point = np.array(point)
         col_vect = (point < np.array([self._xMin, self._yMin])) \
                    | (np.isclose(point, [self._xMin, self._yMin], atol=0.1, rtol=0.0))\
@@ -185,6 +187,8 @@ class Environment:
                    | (np.isclose(point, [self._xMax, self._yMax], atol=0.1, rtol=0.0))
         collision = (col_vect[0] | col_vect[1])
         if collision:
+            if plot:
+                self.paint_collision_point(point[0], point[1], collision)
             return True
 
         for obstacle in self._obstacleList:
@@ -192,8 +196,22 @@ class Environment:
             col_vect = (col_vect < 0) | (np.isclose(col_vect, np.zeros(len(col_vect)), atol=1.0e-5, rtol=1.0e-5))
             collision = (np.sum(col_vect.astype(int)) == len(col_vect))
             if collision:
+                if plot:
+                    self.paint_collision_point(point[0], point[1], collision)
                 return True
+        if plot:
+            self.paint_collision_point(point[0], point[1], collision)
         return False
+
+    def paint_collision_point(self, x, y, collision):
+        color = []
+        if collision:
+            color.append((1.0, 0.0, 0.0, 1.0))
+        else:
+            color.append((0.4, 0.75, 0.1, 1.0))
+
+        self._axes.scatter(x, y,
+                           s=10.00, color=color, marker='o')
 
     def sample(self, n, distribution):
         if distribution == 'U':
@@ -211,21 +229,10 @@ class Environment:
             y_rand = sample[:, 1]
         else:
             print('\nERROR: no such distribution.\n')
-
-        color = []
-        for i in range(0, len(x_rand)):
-            collision = self.collision([x_rand[i], y_rand[i]])
-            if collision:
-                color.append((1.0, 0.0, 0.0, 1.0))
-            else:
-                color.append((0.4, 0.75, 0.1, 1.0))
-
-        self._axes.scatter(x_rand, y_rand,
-                           s=10.00, color=color, marker='o')
         return x_rand, y_rand
 
     # ________________________________________________Integration_______________________________________________________
-    def draw_robot_trajectory(self, plot=False):
+    def draw_robot_trajectory(self, plot=False, draw_successful_trajectory=False):
         (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
 
         odeIterGuassMax = self._odeIterGuassMax
@@ -257,12 +264,19 @@ class Environment:
                     break
         print('\nIntegration successful after ', ode_iter, ' iterations. \n')
 
+        if draw_successful_trajectory:
+            r_cTilda = self._xTilda[:, 0:2]
+            (x_c, y_c) = util.polar2xy_large(r_cTilda)
+
+            self._axes.plot(x_c, y_c)
+        return info['message']
+    # ________________________________________________Integration_______________________________________________________
+
+    def draw_good_trajectory(self):
         r_cTilda = self._xTilda[:, 0:2]
         (x_c, y_c) = util.polar2xy_large(r_cTilda)
 
         self._axes.plot(x_c, y_c)
-        return info['message']
-    # ________________________________________________Integration_______________________________________________________
 
     def play_robot_trajectory(self):
         xTilda     = self._xTilda
@@ -386,7 +400,7 @@ class Environment:
         for i in range(0, len(x_c_approx)):
             r_cTilda_approx_i = np.array([x_c_approx[i],
                                           y_c_approx[i]])
-            collision_i = self.collision(r_cTilda_approx_i)
+            collision_i = self.collision(r_cTilda_approx_i, plot)
             if collision_i:
                 return True
 
@@ -396,7 +410,7 @@ class Environment:
         if distribution == 'U':
             θ_rand = np.random.uniform(-np.pi, np.pi, n)
         elif distribution == 'N':
-            μ, σ = self._robot.get_x_0()[3], self._headSD_Guass  # mean and standard deviation
+            μ, σ = self._robot.get_x_0()[2], self._headSD_Guass  # mean and standard deviation
             θ_rand = np.random.normal(μ, σ, n)
         else:
             print('\nERROR: no such distribution.\n')
@@ -407,52 +421,67 @@ class Environment:
         (x_rand, y_rand) = self.sample(n, distribution)
         θ_rand           = self.sample_angle(n, distribution)
 
-        (ρ_rand, φ_rand) = util.xy2polar(x_rand, y_rand)
-        q_rand = np.array([ρ_rand, φ_rand, θ_rand])
-        return q_rand
+        if n == 1:
+            (ρ_rand, φ_rand) = util.xy2polar(x_rand[0], y_rand[0])
+            q_rand = np.array([ρ_rand, φ_rand, θ_rand[0]])
+        else:
+            (ρ_rand, φ_rand) = util.xy2polar_large(x_rand, y_rand)
+            q_rand = np.stack([ρ_rand, φ_rand])
+            q_rand = np.transpose(q_rand)
 
-    def new_state(self, q_rand, q_near):
-        self.draw_robot_trajectory(plot=False)
+        return q_rand                               # O/P: q_random = [ρ φ θ] in radians
+
+    def new_state(self, q_rand, x_near):
+        r_ref_polar      = q_rand[0:2]
+        (x_rand, y_rand) = util.polar2xy(r_ref_polar)
+        if self.collision([x_rand, y_rand]):
+            return False
+
+        q_ref = np.concatenate((r_ref_polar, [util.heading_direction(x_near[0:2], r_ref_polar)]), axis=0)
+        self._robot.set_x_0(x_near)
+        self._robot.set_q_ref(q_ref)
+
+        msg     = self.draw_robot_trajectory(plot=False, draw_successful_trajectory=False)
+        success = (msg == 'Integration successful.')
+        if success:
+            return ~self.collision_trajectory(plot=False)
+
+        return success
 
 
-
-        return 0
-
-
-    """"
+    #""""
     # _______________________________________________RRT___________________________________________________________
     def build_RRT(self, K):
         for k in range(0, K+1):
-            x_rand = self.random_state()
-            self.extend_tree(x_rand)
+            q_rand = self.random_config(1, distribution='N')
+            extended = self.extend_tree(q_rand)
 
-    
+    def extend_tree(self, q_rand):
+        v_near = self.nearest_neighbor(q_rand)
+        x_near = v_near.element()
 
-    def extend_tree(self, x_rand):
-        x_near = self.nearest_neighbor(q_rand)
-        if new_state(x_rand, x_near):
-            self._RRTtree.insert_vertex(xCoord_new, yCoord_new, v_near, element=x_new)
-            self._RRTtree.insert_edge(v_near, v_new, x=None)
+        if self.new_state(q_rand, x_near):
+            end = len(self._xTilda[:, 1]) - 1
+            q_new = self._xTilda[end, 0:3]
 
-            if x_new == x_rand:
+            t_head_control = (self._robot.get_t_head_min(), self._robot.get_t_head_max())
+
+            v_new = self._RRTtree.insert_vertex(x=x_near, padre=v_near)
+            e_new = self._RRTtree.get_edge(v_near, v_new)
+            e_new.set_element(t_head_control)
+
+            metric = util.metric(q_new, q_rand, self._metric_weight)
+            ε = self._ε
+            if metric < ε:
                 return 'reached'
             else:
                 return 'advanced'
-
         return 'trapped'
-
-    def nearest_neighbor(self, x_rand, exact):
-        if (exact):
-            naviee way 
-        else:
-            kd tree way 
-        
-        return 0
-
-    
     # _______________________________________________RRT___________________________________________________________
     #"""
 
+    def nearest_neighbor(self, q_rand, exact=False):
+        return self._RRTtree.get_root()
 
 
 

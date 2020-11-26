@@ -53,6 +53,9 @@ class Edge:
     def element(self):
         return self._element
 
+    def set_element(self, element):
+        self._element = element
+
     def __hash__(self):
         return hash((self._origin, self._destination))
 # --------------------------------------------------Edge----------------------------------------------------------------

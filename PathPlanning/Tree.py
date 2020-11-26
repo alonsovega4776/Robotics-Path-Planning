@@ -11,9 +11,9 @@ import Utility as util
 class Tvertex(SpatialGraph.Vertex):
     __slots__ = '_parent', '_children'
 
-    def __init__(self, q, id_num, parent=None):
-        r = util.polar2xy(q)
-        super().__init__(x=r[0], y=r[1], element=q, n=id_num)
+    def __init__(self, x, id_num, parent=None):
+        r = util.polar2xy(x)
+        super().__init__(x=r[0], y=r[1], element=x, n=id_num)
 
         self._parent = parent
         self._children = []
@@ -33,18 +33,18 @@ class Tvertex(SpatialGraph.Vertex):
 class Tree(SpatialGraph.Graph):
     __slots__ = '_root'
 
-    def __init__(self, q_initial):
+    def __init__(self, x_initial):
         super().__init__(directed=False)
 
-        self._root = self.insert_vertex(q_initial, padre=None)
+        self._root = self.insert_vertex(x_initial, padre=None)
 
     def get_root(self):
         return self._root
 
-    def insert_vertex(self, q, padre):
+    def insert_vertex(self, x, padre):
         next_id = len(super()._vertices)
 
-        v = Tvertex(q, next_id, parent=padre)
+        v = Tvertex(x, next_id, parent=padre)
         super().vertices().append(v)
 
         super().I_minus_list().append({})
