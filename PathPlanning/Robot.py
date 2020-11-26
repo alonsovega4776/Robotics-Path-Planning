@@ -57,7 +57,7 @@ class Robot:
         self._wheel_center_distance = 0.20
 
         self._t_θ_min = 0.0
-        self._t_θ_max = 0.0
+        self._t_θ_max = 0.25
 
     def get_t_head_min(self):
         return self._t_θ_min

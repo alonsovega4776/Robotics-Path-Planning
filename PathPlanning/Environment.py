@@ -23,8 +23,9 @@ class Environment:
                 '_cov_matrix', \
                 '_kd_Tree', \
                 '_xTilda', '_camera', \
-                '_dt_head_min_pph', '_μ_tHeadControl_pph', '_Σ_tHeadControl_pph', \
-                '_Δ_trajectory'
+                '_dt_head_min_pph', '_dt_head_max_pph', '_μ_tHeadControl_pph', '_Σ_tHeadControl_pph', \
+                '_Δ_trajectory', '_odeIterGuassMax', '_odeIterMax', \
+                '_headSD_Guass'
 
     def __init__(self, X, Y, obstacle_list, start, goal):
         self._xMin = X[0]
@@ -35,9 +36,11 @@ class Environment:
 
         self._obstacleList = obstacle_list
 
-        start = np.array(start)         # initial state
-        goal  = np.array(goal)          # reference state
-        self._robot = Robot.Robot(start, q_ref=start, t_1=0.0, t_2=5.0, step_number=500)
+        start = np.array(start)         # initial positional state
+        goal  = np.array(goal)          # reference positional state
+        self._robot = Robot.Robot(np.concatenate((start, [0, 0, 0])),
+                                  q_ref=np.concatenate((start, [0])),
+                                  t_1=0.0, t_2=5.0, step_number=500)
 
         self._RRTtree = Tree.Tree(start)
 
@@ -53,12 +56,17 @@ class Environment:
 
         self._camera = Camera.Camera(self._figure)
 
-        self._dt_head_min_pph = 50
-        self._μ_tHeadControl_pph = [0.0, 0.25]
-        self._Σ_tHeadControl_pph = [0.2, 0.2]
+        self._dt_head_min_pph    = 25  # pph
+        self._dt_head_max_pph    = 50  # pph
+        self._μ_tHeadControl_pph = np.array([10, 25])/100  # pph in decimal
+        self._Σ_tHeadControl_pph = np.array([5, 10])/100   # pph in decimal
 
         self._xTilda = []
         self._Δ_trajectory = 5
+        self._odeIterGuassMax = 4       # actual number of normal control calls is one less than this number
+        self._odeIterMax      = 6
+
+        self._headSD_Guass = 0.1
 
     def get_camera(self):
         return self._camera
@@ -191,7 +199,7 @@ class Environment:
         if distribution == 'U':
             x_rand = np.random.uniform(self._xMin, self._xMax, n)
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
-        elif  distribution == 'N':
+        elif distribution == 'N':
             q_0 = self._robot.get_x_0()[0:3]
             r_0 = util.polar2xy(q_0)
 
@@ -214,28 +222,46 @@ class Environment:
 
         self._axes.scatter(x_rand, y_rand,
                            s=10.00, color=color, marker='o')
+        return x_rand, y_rand
 
     # ________________________________________________Integration_______________________________________________________
     def draw_robot_trajectory(self, plot=False):
         (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
 
-        ode_iter = 0
+        odeIterGuassMax = self._odeIterGuassMax
+        odeIterMax      = self._odeIterMax
+        ode_iter = 1
         while info['message'] != 'Integration successful.':
-            print('\nERROR: integration failed, trying again: ', ode_iter, ' \n')
-
-            if ode_iter < 3:
-                self.set_random_time_control('N')
+            if ode_iter < odeIterGuassMax:
+                (t_head_min, t_head_max) = self.set_random_time_control('N')
+                print('\nChanging Control: Normal heading time control: (', t_head_min, ',', t_head_max, ')')
             else:
-                self.set_random_time_control('U')
+                if (ode_iter + 1) == odeIterMax:
+                    (t_head_min, t_head_max) = self._robot.get_time_duration()
+                    self._robot.set_t_head_max(t_head_max)
+                    self._robot.set_t_head_min(t_head_min)
+                    print('\nChanging Control: Full heading time control: (', t_head_min, ',', t_head_max, ')')
+                else:
+                    (t_head_min, t_head_max) = self.set_random_time_control('U')
+                    print('\nChanging Control: Uniform heading time control: (', t_head_min, ',', t_head_max, ')')
 
-            (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
             ode_iter = ode_iter + 1
-        print('\nIntegration successful after ', ode_iter+1, ' iterations. \n')
+            print('ERROR: integration failed, trying again. Iteration:', ode_iter, ' \n')
+            (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
+
+            if ode_iter >= odeIterMax:
+                if info['message'] != 'Integration successful.':
+                    print('\nERROR: integration failed, max iterations reached. Total Iteration:', ode_iter, ' \n')
+                    return info['message']
+                else:
+                    break
+        print('\nIntegration successful after ', ode_iter, ' iterations. \n')
 
         r_cTilda = self._xTilda[:, 0:2]
         (x_c, y_c) = util.polar2xy_large(r_cTilda)
 
         self._axes.plot(x_c, y_c)
+        return info['message']
     # ________________________________________________Integration_______________________________________________________
 
     def play_robot_trajectory(self):
@@ -314,6 +340,7 @@ class Environment:
         (t_1, t_2) = self._robot.get_time_duration()
         dura = t_2 - t_1
         dt_min = (self._dt_head_min_pph / 100) * dura
+        dt_max = (self._dt_head_max_pph / 100) * dura
 
         while True:
             if distribution == 'U':
@@ -333,7 +360,7 @@ class Environment:
                 print('\nERROR: no such distribution.\n')
 
             dt = t_head_max - t_head_min
-            if dt > dt_min:
+            if (dt > dt_min) & (dt < dt_max) & (t_head_max >= 0) & (t_head_min >= 0):
                 break
 
         self._robot.set_t_head_max(t_head_max)
@@ -365,6 +392,32 @@ class Environment:
 
         return False
 
+    def sample_angle(self, n, distribution='U'):
+        if distribution == 'U':
+            θ_rand = np.random.uniform(-np.pi, np.pi, n)
+        elif distribution == 'N':
+            μ, σ = self._robot.get_x_0()[3], self._headSD_Guass  # mean and standard deviation
+            θ_rand = np.random.normal(μ, σ, n)
+        else:
+            print('\nERROR: no such distribution.\n')
+
+        return θ_rand
+
+    def random_config(self, n, distribution='U'):
+        (x_rand, y_rand) = self.sample(n, distribution)
+        θ_rand           = self.sample_angle(n, distribution)
+
+        (ρ_rand, φ_rand) = util.xy2polar(x_rand, y_rand)
+        q_rand = np.array([ρ_rand, φ_rand, θ_rand])
+        return q_rand
+
+    def new_state(self, q_rand, q_near):
+        self.draw_robot_trajectory(plot=False)
+
+
+
+        return 0
+
 
     """"
     # _______________________________________________RRT___________________________________________________________
@@ -373,10 +426,7 @@ class Environment:
             x_rand = self.random_state()
             self.extend_tree(x_rand)
 
-    def random_state(self):
-        self
-
-        return x
+    
 
     def extend_tree(self, x_rand):
         x_near = self.nearest_neighbor(q_rand)
@@ -399,8 +449,7 @@ class Environment:
         
         return 0
 
-    def new_state(self, x_rand, x_near):
-        return 0
+    
     # _______________________________________________RRT___________________________________________________________
     #"""
 
