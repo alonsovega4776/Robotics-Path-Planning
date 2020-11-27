@@ -26,7 +26,8 @@ class Environment:
                 '_dt_head_min_pph', '_dt_head_max_pph', '_μ_tHeadControl_pph', '_Σ_tHeadControl_pph', \
                 '_Δ_trajectory', '_odeIterGuassMax', '_odeIterMax', \
                 '_headSD_Guass', \
-                '_ε', '_metric_weight'
+                '_ε', '_metric_weight', \
+                '_ε_collision', '_ε_goal', '_goal_indices'
 
     def __init__(self, X, Y, obstacle_list, initial_state, goal):
         self._xMin = X[0]
@@ -49,8 +50,8 @@ class Environment:
         self._cov_matrix = np.diag([1.5, 1.5])
 
         self._figure, self._axes = plt.subplots()
-        self._figure.set_figheight(5.0)
-        self._figure.set_figwidth(5.0)
+        self._figure.set_figheight(10.0)
+        self._figure.set_figwidth(10.0)
         self._axes.grid(True)
 
         self._camera = Camera.Camera(self._figure)
@@ -69,6 +70,10 @@ class Environment:
 
         self._ε = 1.0
         self._metric_weight = np.array([1.0, 1.0, 2.0])
+
+        self._ε_collision = 0.1
+        self._ε_goal      = 1.0
+        self._goal_indices = []
 
     def get_camera(self):
         return self._camera
@@ -168,7 +173,11 @@ class Environment:
         segments = pltC.LineCollection(points, linewidths=0.75, colors=(0, 0, 1, 1))
         self._axes.add_collection(segments)
 
-        self._axes.scatter(self._goal[0], self._goal[1], s=900.0, color=(0.5, 0.25, 0.15, 0.1), marker='o')
+        goal_art = patches.Circle((self._goal[0], self._goal[1]),
+                               self._ε_goal,
+                               color=(1.0, 0.0, 0.0, 0.15))
+        self._axes.add_artist(goal_art)
+
 
         self._axes.set_xlim(self._xMin - limit, self._xMax + limit)
         self._axes.set_ylim(self._yMin - limit, self._yMax + limit)
@@ -180,11 +189,13 @@ class Environment:
         return self._figure
 
     def collision(self, point, plot=False):
+        ε = self._ε_collision
+
         point = np.array(point)
         col_vect = (point < np.array([self._xMin, self._yMin])) \
-                   | (np.isclose(point, [self._xMin, self._yMin], atol=0.1, rtol=0.0))\
+                   | (np.isclose(point, [self._xMin, self._yMin], atol=ε, rtol=0.0))\
                    | (point > np.array([self._xMax, self._yMax]))\
-                   | (np.isclose(point, [self._xMax, self._yMax], atol=0.1, rtol=0.0))
+                   | (np.isclose(point, [self._xMax, self._yMax], atol=ε, rtol=0.0))
         collision = (col_vect[0] | col_vect[1])
         if collision:
             if plot:
@@ -193,7 +204,7 @@ class Environment:
 
         for obstacle in self._obstacleList:
             col_vect = np.matmul(obstacle.boundary()['N'], point) + obstacle.boundary()['b']
-            col_vect = (col_vect < 0) | (np.isclose(col_vect, np.zeros(len(col_vect)), atol=1.0e-5, rtol=1.0e-5))
+            col_vect = (col_vect < 0) | (np.isclose(col_vect, np.zeros(len(col_vect)), atol=ε, rtol=0.0))
             collision = (np.sum(col_vect.astype(int)) == len(col_vect))
             if collision:
                 if plot:
@@ -206,12 +217,12 @@ class Environment:
     def paint_collision_point(self, x, y, collision):
         color = []
         if collision:
-            color.append((1.0, 0.0, 0.0, 1.0))
+            color.append((1.0, 0.0, 0.0, 0.5))
         else:
-            color.append((0.4, 0.75, 0.1, 1.0))
+            color.append((0.4, 0.75, 0.1, 0.5))
 
         self._axes.scatter(x, y,
-                           s=10.00, color=color, marker='o')
+                           s=5.00, color=color, marker='o')
 
     def sample(self, n, distribution):
         if distribution == 'U':
@@ -268,7 +279,7 @@ class Environment:
             r_cTilda = self._xTilda[:, 0:2]
             (x_c, y_c) = util.polar2xy_large(r_cTilda)
 
-            self._axes.plot(x_c, y_c)
+            self._axes.plot(x_c, y_c, color='black', linestyle='--', linewidth=0.5)
         return info['message']
     # ________________________________________________Integration_______________________________________________________
 
@@ -279,11 +290,7 @@ class Environment:
         self._axes.plot(x_c, y_c)
 
     def play_robot_trajectory(self):
-        xTilda     = self._xTilda
-        (t_1, t_2) = self._robot.get_time_duration()
-        N          = self._robot.get_number_time_steps()
-        Δt         = (t_2 - t_1)/N
-        Δt         = Δt*1000            # [ms]
+        xTilda = self._xTilda
 
         for i in range(0, len(xTilda[:, 1])):
             self.animate(i)
@@ -292,8 +299,7 @@ class Environment:
         return anime
 
     def animate(self, i):
-        xTilda = self._xTilda
-        q_cTilda   = xTilda[:, 0:3]
+        q_cTilda   = self._xTilda[:, 0:3]
         (x_c, y_c) = util.polar2xy_large(q_cTilda)
 
         r_c = np.array([x_c[i], y_c[i]])
@@ -393,10 +399,6 @@ class Environment:
             x_c_approx.append(x_c[i])
             y_c_approx.append(y_c[i])
 
-        if plot:
-            for i in range(0, len(x_c_approx)):
-                self._axes.scatter(x_c_approx[i], y_c_approx[i], s=10.0, color=(1, 0, 0, 1.0))
-
         for i in range(0, len(x_c_approx)):
             r_cTilda_approx_i = np.array([x_c_approx[i],
                                           y_c_approx[i]])
@@ -432,56 +434,138 @@ class Environment:
         return q_rand                               # O/P: q_random = [ρ φ θ] in radians
 
     def new_state(self, q_rand, x_near):
-        r_ref_polar      = q_rand[0:2]
-        (x_rand, y_rand) = util.polar2xy(r_ref_polar)
-        if self.collision([x_rand, y_rand]):
-            return False
-
-        q_ref = np.concatenate((r_ref_polar, [util.heading_direction(x_near[0:2], r_ref_polar)]), axis=0)
+        r_ref_polar = q_rand[0:2]
+        q_ref       = np.concatenate((r_ref_polar, [util.heading_direction(x_near[0:2], r_ref_polar)]), axis=0)
         self._robot.set_x_0(x_near)
         self._robot.set_q_ref(q_ref)
 
         msg     = self.draw_robot_trajectory(plot=False, draw_successful_trajectory=False)
         success = (msg == 'Integration successful.')
         if success:
-            return ~self.collision_trajectory(plot=False)
+            return not self.collision_trajectory(plot=False)
 
         return success
 
+    def check_goal(self, q):
+        ε = self._ε_goal
 
-    #""""
+        r_goal = np.array(self._goal)
+        (x, y) = util.polar2xy(q)
+        r_new  = np.array([x, y])
+        Δr     = r_goal - r_new
+
+        distance = np.linalg.norm(Δr)
+        goal = (distance < ε)
+        return goal
+
+    def get_goal_node_indices(self, v_goal):
+        indices = []
+
+        id_goal = v_goal.id()
+        indices.append(id_goal)
+
+        while id_goal != 0:
+            v_goal = v_goal.get_parent()
+            id_goal = v_goal.id()
+            indices.append(id_goal)
+
+        self._goal_indices = indices
+
+    def get_goal_trajectory(self):
+        if len(self._goal_indices) == 0:
+            print('\nERROR: no goal yet.\n')
+
+        self._xTilda = np.array([0, 0, 0, 0, 0])
+
+        self._goal_indices.reverse()
+        for i in range(0, len(self._goal_indices)-1):
+            v_i          = self._RRTtree.get_vertex(self._goal_indices[i])
+            v_iPlus1     = self._RRTtree.get_vertex(self._goal_indices[i+1])
+            e_i_2_iPlus1 = self._RRTtree.get_edge(v_i, v_iPlus1)
+
+            x_i                      = v_i.element()
+            q_iPlus                  = v_iPlus1.get_reference_config()
+            (t_head_min, t_head_max) = e_i_2_iPlus1.element()
+
+            self._robot.set_x_0(x_i)
+            self._robot.set_q_ref(q_iPlus)
+            self._robot.set_t_head_min(t_head_min)
+            self._robot.set_t_head_max(t_head_max)
+
+            (xTilda, info) = self._robot.get_trajectory(degrees=False, plot=False)
+            r_cTilda             = xTilda[:, 0:2]
+            (x_c, y_c)           = util.polar2xy_large(r_cTilda)
+            self._axes.plot(x_c, y_c, color=(0.0, 0, 1.0, 0.25), linestyle='-', linewidth=4.0)
+
+            self._xTilda = np.vstack((self._xTilda, xTilda))
+
+        self._xTilda[0, :] = self._xTilda[1, :]
+
     # _______________________________________________RRT___________________________________________________________
     def build_RRT(self, K):
-        for k in range(0, K+1):
-            q_rand = self.random_config(1, distribution='N')
-            extended = self.extend_tree(q_rand)
+        results = []
+        for k in range(0, K):
+            q_rand           = self.random_config(1, distribution='N')
+            r_ref_polar      = q_rand[0:2]
+            (x_rand, y_rand) = util.polar2xy(r_ref_polar)
+            if self.collision([x_rand, y_rand], plot=True):
+                results.append('bad sample')
+                continue
 
-    def extend_tree(self, q_rand):
+            extended = self.extend_tree(q_rand)
+            results.append(extended)
+
+            if len(self._goal_indices) > 0:
+                break
+        return results
+
+    def extend_tree(self, q_rand):              # only ρ and φ are random
         v_near = self.nearest_neighbor(q_rand)
         x_near = v_near.element()
 
-        if self.new_state(q_rand, x_near):
-            end = len(self._xTilda[:, 1]) - 1
-            q_new = self._xTilda[end, 0:3]
+        good_state = self.new_state(q_rand, x_near)
+        if good_state:
+            end   = len(self._xTilda[:, 1]) - 1
+            x_new = self._xTilda[end, :]
+            q_new = x_new[0:3]
 
             t_head_control = (self._robot.get_t_head_min(), self._robot.get_t_head_max())
 
-            v_new = self._RRTtree.insert_vertex(x=x_near, padre=v_near)
+            v_new = self._RRTtree.insert_vertex(x=x_new, padre=v_near)
+
+            r_ref_polar = q_rand[0:2]
+            q_ref = np.concatenate((r_ref_polar, [util.heading_direction(x_near[0:2], r_ref_polar)]), axis=0)
+            v_new.set_reference_config(q_ref=q_ref)
+
             e_new = self._RRTtree.get_edge(v_near, v_new)
             e_new.set_element(t_head_control)
 
             metric = util.metric(q_new, q_rand, self._metric_weight)
             ε = self._ε
             if metric < ε:
+                if self.check_goal(q_new):
+                    print('\nGoal found!!!!!!! \n')
+                    self.get_goal_node_indices(v_new)
                 return 'reached'
             else:
+                if self.check_goal(q_new):
+                    print('\nGoal found!!!!!!! \n')
+                    self.get_goal_node_indices(v_new)
                 return 'advanced'
         return 'trapped'
     # _______________________________________________RRT___________________________________________________________
-    #"""
 
     def nearest_neighbor(self, q_rand, exact=False):
-        return self._RRTtree.get_root()
+        distances = []
+        for v in self._RRTtree.vertices():
+            x = v.element()
+            q = x[0:3]
+
+            metric_i = util.metric(q, q_rand, self._metric_weight)
+            distances.append(metric_i)
+        min_index = np.argmin(distances)
+        v_nearest = self._RRTtree.get_vertex(min_index)
+        return v_nearest
 
 
 

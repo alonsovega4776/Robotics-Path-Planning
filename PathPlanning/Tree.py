@@ -9,7 +9,7 @@ import Utility as util
 
 # ------------------------------------------------Vertex----------------------------------------------------------------
 class Tvertex(SpatialGraph.Vertex):
-    __slots__ = '_parent', '_children'
+    __slots__ = '_parent', '_children', '_reference_config'
 
     def __init__(self, x, id_num, parent=None):
         r = util.polar2xy(x)
@@ -17,6 +17,13 @@ class Tvertex(SpatialGraph.Vertex):
 
         self._parent = parent
         self._children = []
+        self._reference_config = x[0:3]
+
+    def get_reference_config(self):
+        return self._reference_config
+
+    def set_reference_config(self, q_ref):
+        self._reference_config = q_ref
 
     def get_parent(self):
         return self._parent
