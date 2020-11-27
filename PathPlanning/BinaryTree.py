@@ -1,5 +1,4 @@
 """
-Alonso Vega
 November 24, 2020
 Binary Tree Class
 """

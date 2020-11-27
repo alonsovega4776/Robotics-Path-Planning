@@ -1,5 +1,4 @@
 """
-Alonso Vega
 November 25, 2020
 Camera by Jacques Kvam (https://github.com/jwkvam)
 modified by Alonso Vega
@@ -72,4 +71,4 @@ class Camera:
         ArtistAnimation
 
         """
-        return ArtistAnimation(self._figure, self._photos, *args, **kwargs)
+        return ArtistAnimation(self._figure, self._photos, interval=1, blit=False, *args, **kwargs)

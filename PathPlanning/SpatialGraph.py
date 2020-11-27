@@ -1,5 +1,4 @@
 """
-Alonso Vega
 October 21, 2020
 Graph Class
 """

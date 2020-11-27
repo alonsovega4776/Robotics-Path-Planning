@@ -1,5 +1,4 @@
 """
-Alonso Vega
 November 7, 2020
 Environment Class
 """

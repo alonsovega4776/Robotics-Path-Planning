@@ -1,5 +1,4 @@
 """
-Alonso Vega
 November 23, 2020
 Useful functions
 """

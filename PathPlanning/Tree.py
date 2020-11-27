@@ -1,5 +1,4 @@
 """
-Alonso Vega
 November 14, 2020
 Tree Class
 """

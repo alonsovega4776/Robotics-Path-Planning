@@ -1,5 +1,4 @@
 """
-Alonso Vega
 October 29, 2020
 Environment Class
 """
@@ -47,7 +46,7 @@ class Environment:
         self._goal  = goal
         self._start = util.polar2xy(initial_state[0:2])
 
-        self._cov_matrix = np.diag([1.5, 1.5])
+        self._cov_matrix = np.diag([20.5, 20.5])
 
         self._figure, self._axes = plt.subplots()
         self._figure.set_figheight(10.0)
@@ -71,7 +70,7 @@ class Environment:
         self._ε = 1.0
         self._metric_weight = np.array([1.0, 1.0, 2.0])
 
-        self._ε_collision = 0.1
+        self._ε_collision = 0.35
         self._ε_goal      = 1.0
         self._goal_indices = []
 
@@ -229,8 +228,11 @@ class Environment:
             x_rand = np.random.uniform(self._xMin, self._xMax, n)
             y_rand = np.random.uniform(self._yMin, self._yMax, n)
         elif distribution == 'N':
+            """
             q_0 = self._robot.get_x_0()[0:3]
             r_0 = util.polar2xy(q_0)
+            """
+            r_0 = np.array(self._goal)
 
             Σ = self._cov_matrix
             μ = np.array([r_0[0], r_0[1]])
@@ -244,6 +246,8 @@ class Environment:
 
     # ________________________________________________Integration_______________________________________________________
     def draw_robot_trajectory(self, plot=False, draw_successful_trajectory=False):
+        (t_head_min, t_head_max) = self.set_random_time_control('U')
+        print('\nInitial Control: Uniform heading time control: (', t_head_min, ',', t_head_max, ')')
         (self._xTilda, info) = self._robot.get_trajectory(degrees=False, plot=plot)
 
         odeIterGuassMax = self._odeIterGuassMax
@@ -292,7 +296,7 @@ class Environment:
     def play_robot_trajectory(self):
         xTilda = self._xTilda
 
-        for i in range(0, len(xTilda[:, 1])):
+        for i in range(0, len(xTilda[:, 1]), 1):
             self.animate(i)
 
         anime = self._camera.animate()
@@ -326,7 +330,7 @@ class Environment:
                       [head_right, head_center],
                       [head_left, head_right]]
         head_color = np.array([(0.0, 0.0, 0.0, 0.8), (0.0, 0.1, 0.0, 0.8), (0.6, 0.1, 0.2, 0.8)])
-        head_art = pltC.LineCollection(head, colors=(0.0, 0.1, 0.0, 0.8), linewidths=1.0)
+        head_art = pltC.LineCollection(head, colors=(0.0, 0.0, 0.0, 1.0), linewidths=1.0)
 
         wheels = [[wheel_leftBack, wheel_leftFront],
                   [wheel_rightBack, wheel_rightFront]]
@@ -338,19 +342,19 @@ class Environment:
                                color=(1.0, 0.0, 0.0, 0.7))
         base2 = patches.Circle((r_c[0], r_c[1]),
                                0.70 * R_robot,
-                               color=(0.3, 0.7, 1.0, 1.0))
+                               color=(0.3, 0.7, 1.0, 0.75))
 
         wheel_art.set_zorder(0)
         base1.set_zorder(5)
         base2.set_zorder(10)
-        head_art.set_zorder(20)
+        head_art.set_zorder(50)
 
         art_1 = self._axes.add_collection(wheel_art)
         art_2 = self._axes.add_artist(base1)
         art_3 = self._axes.add_artist(base2)
         art_4 = self._axes.add_collection(head_art)
-        art_list = [art_1, art_2, art_3, art_4]
 
+        art_list = [art_1, art_2, art_3, art_4]
         self._camera.snap(art_list)
 
     def refresh_figure(self):
@@ -439,10 +443,10 @@ class Environment:
         self._robot.set_x_0(x_near)
         self._robot.set_q_ref(q_ref)
 
-        msg     = self.draw_robot_trajectory(plot=False, draw_successful_trajectory=False)
+        msg     = self.draw_robot_trajectory(plot=False, draw_successful_trajectory=True)
         success = (msg == 'Integration successful.')
         if success:
-            return not self.collision_trajectory(plot=False)
+            return not self.collision_trajectory(plot=True)
 
         return success
 
